@@ -5,10 +5,11 @@ const FILENAME: &str = "main.bf";
 fn get_loop(code: &String, begin: usize, loops: &mut Vec<(usize, usize)>) -> usize {
     let mut index = begin;
 
-    while index < code.len() {
-        let character = code
-            .chars()
-            .nth(index)
+    let chars = code.chars().collect::<Vec<char>>();
+
+    while index < chars.len() {
+        let character = chars
+            .get(index)
             .expect("Unexpected error while trying to index loops. Please report this error");
 
         match character {
@@ -23,7 +24,7 @@ fn get_loop(code: &String, begin: usize, loops: &mut Vec<(usize, usize)>) -> usi
         index += 1;
     }
 
-    code.len()
+    chars.len()
 }
 
 #[cfg(test)]
