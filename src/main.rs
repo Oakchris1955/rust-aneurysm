@@ -1,4 +1,4 @@
-use std::fs;
+use std::{fs, io};
 
 const FILENAME: &str = "main.bf";
 
@@ -37,6 +37,20 @@ fn wrapping_change(first: usize, add: bool, limit: usize) -> usize {
             first + 1
         } else {
             first - 1
+        }
+    }
+}
+
+fn read_char() -> char {
+    let mut input = String::new();
+
+    loop {
+        if io::stdin().read_line(&mut input).is_err() {
+            continue;
+        }
+
+        if let Some(character) = input.chars().next() {
+            return character;
         }
     }
 }
@@ -110,6 +124,7 @@ fn main() {
             '+' => data[data_pointer] = data[data_pointer].overflowing_add(1).0,
             '-' => data[data_pointer] = data[data_pointer].overflowing_sub(1).0,
             '.' => print!("{}", data[data_pointer] as char),
+            ',' => data[data_pointer] = read_char() as u8,
             '[' => {
                 if data[data_pointer] == 0 {
                     instruction_pointer = loops
