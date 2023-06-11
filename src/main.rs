@@ -1,5 +1,5 @@
 use clap::{arg, command, ArgMatches};
-use std::{fs, io};
+use std::{fs, io, process::exit};
 
 const DEFAULT_FILENAME: &str = "main.bf";
 
@@ -108,8 +108,17 @@ fn main() {
 
     let filename = args.get_one::<String>("filename").expect("Error trying to obtain name of file to execute. This error shouldn't happen by default, since a default value is specified. Please report this error");
 
-    let code =
-        fs::read_to_string(filename).expect(format!("Couldn't read file {}", filename).as_str());
+    let code = fs::read_to_string(filename).unwrap_or_else(|error| {
+        match error.kind() {
+            io::ErrorKind::NotFound => eprintln!("File {} not found", filename),
+            io::ErrorKind::PermissionDenied => {
+                eprintln!("Couldn't open file due to a permission error")
+            }
+            _ => eprintln!("An unknown error occured while opening file {}", filename),
+        };
+
+        exit(1)
+    });
 
     println!("Successfully opened file {}", filename);
 
