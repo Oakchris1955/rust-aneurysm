@@ -1,6 +1,7 @@
+use clap::{arg, command, ArgMatches};
 use std::{fs, io};
 
-const FILENAME: &str = "main.bf";
+const DEFAULT_FILENAME: &str = "main.bf";
 
 fn get_loop(code: &String, begin: usize, loops: &mut Vec<(usize, usize)>) -> usize {
     let mut index = begin;
@@ -96,10 +97,21 @@ mod tests {
 }
 
 fn main() {
-    let code =
-        fs::read_to_string(FILENAME).expect(format!("Couldn't read file {}", FILENAME).as_str());
+    let args: ArgMatches = command!()
+        .about("A Brainf**k interpreter written in Rust with minimal dependencies")
+        .arg(
+            arg!([filename] "Brainf**k file to execute")
+                .default_value(DEFAULT_FILENAME)
+                .required(false),
+        )
+        .get_matches();
 
-    println!("Successfully opened file {}", FILENAME);
+    let filename = args.get_one::<String>("filename").expect("Error trying to obtain name of file to execute. This error shouldn't happen by default, since a default value is specified. Please report this error");
+
+    let code =
+        fs::read_to_string(filename).expect(format!("Couldn't read file {}", filename).as_str());
+
+    println!("Successfully opened file {}", filename);
 
     let mut loops: Vec<(usize, usize)> = Vec::new();
 
