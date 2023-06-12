@@ -5,17 +5,14 @@ use std::{fs, io, process::exit};
 const DEFAULT_FILENAME: &str = "main.bf";
 
 /// A recursive function that searches for loops within a BF file
-fn get_loop(code: &String, begin: usize, loops: &mut Vec<(usize, usize)>) -> usize {
+fn get_loop(code: &Vec<char>, begin: usize, loops: &mut Vec<(usize, usize)>) -> usize {
     // Begin reading the code from a parameter index
     let mut index = begin;
 
-    // Turn the code in a char Vec
-    let chars = code.chars().collect::<Vec<char>>();
-
     // Loop through each char in the Vec, beginning from the parameter index
-    while index < chars.len() {
+    while index < code.len() {
         // Obtain the corresponding character
-        let character = chars
+        let character = code
             .get(index)
             .expect("Unexpected error while trying to index loops. Please report this error");
 
@@ -36,7 +33,7 @@ fn get_loop(code: &String, begin: usize, loops: &mut Vec<(usize, usize)>) -> usi
     }
 
     // If no loop ending found, assume that the loop ending is at EOF
-    chars.len()
+    code.len()
 }
 
 /// Simulates a number overflow or underflow (used for the data pointer)
@@ -91,7 +88,7 @@ pub mod tests {
         for (text, test_case) in TEST_CASES {
             loops.clear();
 
-            get_loop(&text.to_string(), 0, &mut loops);
+            get_loop(&text.chars().collect::<Vec<char>>(), 0, &mut loops);
             loops.sort();
 
             if test_case != &loops.as_slice() {
@@ -129,17 +126,20 @@ fn main() {
     let filename = args.get_one::<String>("filename").expect("Error trying to obtain name of file to execute. This error shouldn't happen by default, since a default value is specified. Please report this error");
 
     // Read file contents (or terminate if an error occurs while doing so)
-    let code = fs::read_to_string(filename).unwrap_or_else(|error| {
-        match error.kind() {
-            io::ErrorKind::NotFound => eprintln!("File {} not found", filename),
-            io::ErrorKind::PermissionDenied => {
-                eprintln!("Couldn't open file due to a permission error")
-            }
-            _ => eprintln!("An unknown error occured while opening file {}", filename),
-        };
+    let code = fs::read_to_string(filename)
+        .unwrap_or_else(|error| {
+            match error.kind() {
+                io::ErrorKind::NotFound => eprintln!("File {} not found", filename),
+                io::ErrorKind::PermissionDenied => {
+                    eprintln!("Couldn't open file due to a permission error")
+                }
+                _ => eprintln!("An unknown error occured while opening file {}", filename),
+            };
 
-        exit(1)
-    });
+            exit(1)
+        })
+        .chars()
+        .collect::<Vec<char>>();
 
     println!("Successfully opened file {}", filename);
 
@@ -155,12 +155,9 @@ fn main() {
 
     let mut data = [0 as u8; 30000];
 
-    // Turn the code in a char Vec
-    let chars = code.chars().collect::<Vec<char>>();
-
     // Loop through each character and process it accordingly
-    while instruction_pointer < chars.len() {
-        let character = chars
+    while instruction_pointer < code.len() {
+        let character = code
             .get(instruction_pointer)
             .expect("Program reached EOF before it was expected");
 
