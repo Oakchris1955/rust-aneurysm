@@ -1,8 +1,11 @@
-use clap::{arg, command, ArgMatches};
+use clap::{arg, command, value_parser, ArgMatches};
 use std::{fs, io, process::exit};
 
 /// The default filename to use in case one isn't specified by the user
 const DEFAULT_FILENAME: &str = "main.bf";
+
+/// The default cell size to use in case one isn't specified by the user
+const DEFAULT_CELL_SIZE: &str = "30000";
 
 /// A recursive function that searches for loops within a BF file
 fn get_loop(code: &Vec<char>, begin: usize, loops: &mut Vec<(usize, usize)>) -> usize {
@@ -120,10 +123,21 @@ fn main() {
                 .default_value(DEFAULT_FILENAME)
                 .required(false),
         )
+        .arg(
+            arg!(-m --mem <memory> "The memory size in bytes/cells to allocate for the program")
+                .default_value(DEFAULT_CELL_SIZE)
+                .value_parser(value_parser!(usize))
+                .required(false),
+        )
         .get_matches();
 
     // Obtain the filename from them
     let filename = args.get_one::<String>("filename").expect("Error trying to obtain name of file to execute. This error shouldn't happen by default, since a default value is specified. Please report this error");
+
+    // Also, obtain the cell size
+    let cell_size = args
+        .get_one::<usize>("mem")
+        .expect("Error while parsing command line argument \"memory\" to an integer");
 
     // Read file contents (or terminate if an error occurs while doing so)
     let code = fs::read_to_string(filename)
@@ -153,7 +167,7 @@ fn main() {
     let mut data_pointer: usize = 0;
     let mut instruction_pointer: usize = 0;
 
-    let mut data = [0 as u8; 30000];
+    let mut data: Vec<u8> = vec![0; *cell_size];
 
     // Loop through each character and process it accordingly
     while instruction_pointer < code.len() {
@@ -162,8 +176,8 @@ fn main() {
             .expect("Program reached EOF before it was expected");
 
         match character {
-            '>' => data_pointer = wrapping_change(data_pointer, true, 30000),
-            '<' => data_pointer = wrapping_change(data_pointer, false, 30000),
+            '>' => data_pointer = wrapping_change(data_pointer, true, *cell_size),
+            '<' => data_pointer = wrapping_change(data_pointer, false, *cell_size),
             '+' => data[data_pointer] = data[data_pointer].overflowing_add(1).0,
             '-' => data[data_pointer] = data[data_pointer].overflowing_sub(1).0,
             '.' => print!("{}", data[data_pointer] as char),
