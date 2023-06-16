@@ -15,3 +15,6 @@ Cargo.lock
 
 # Brainf**k files
 *.bf
+
+# Compiled executables
+**/aneurysm*
