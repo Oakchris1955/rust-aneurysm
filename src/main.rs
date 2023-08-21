@@ -187,6 +187,19 @@ fn main() {
     let mut instruction_pointer: usize = 0;
 
     let mut data: Vec<u8> = vec![0; *cell_size];
+    // Creating a new vector might not allocate any memory
+    // For this reason, we iterate through the vector and set all its items to 0
+    if debug_logging {
+        print!("Allocating memory... ");
+        // Flush to stdout
+        let _ = stdout().flush();
+    }
+    data.iter_mut().for_each(|cell| *cell = 0);
+    if debug_logging {
+        println!("done");
+
+        println!("Start executing program...")
+    }
 
     // Loop through each character and process it accordingly
     while instruction_pointer < code.len() {
