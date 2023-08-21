@@ -1,5 +1,9 @@
 use clap::{arg, command, value_parser, ArgMatches};
-use std::{fs, io, process::exit};
+use std::{
+    fs,
+    io::{self, stdout, Write},
+    process::exit,
+};
 
 /// The default filename to use in case one isn't specified by the user
 const DEFAULT_FILENAME: &str = "main.bf";
@@ -129,10 +133,23 @@ fn main() {
                 .value_parser(value_parser!(usize))
                 .required(false),
         )
+        .arg(
+            arg!(-d --debug "Enable debug logging")
+                .value_parser(value_parser!(bool))
+                .required(false),
+        )
         .get_matches();
 
     // Obtain the filename from them
     let filename = args.get_one::<String>("filename").expect("Error trying to obtain name of file to execute. This error shouldn't happen by default, since a default value is specified. Please report this error");
+
+    // Check whether or not debug logging is enabled
+    let debug_logging = args
+        .get_one::<bool>("debug")
+        .expect("Error trying to see wheteher debug logging is enabled or not")
+        .clone();
+
+    println!("debug: {}", debug_logging);
 
     // Also, obtain the cell size
     let cell_size = args
@@ -155,7 +172,9 @@ fn main() {
         .chars()
         .collect::<Vec<char>>();
 
-    println!("Successfully opened file {}", filename);
+    if debug_logging {
+        println!("Successfully opened file {}", filename);
+    }
 
     // Initialize a Vec to store the loops' start and end
     let mut loops: Vec<(usize, usize)> = Vec::new();
@@ -204,5 +223,9 @@ fn main() {
         };
 
         instruction_pointer += 1;
+    }
+
+    if debug_logging {
+        println!("Program terminated")
     }
 }

@@ -19,6 +19,7 @@ Arguments:
 
 Options:
   -m, --mem <memory>  The memory size in bytes/cells to allocate for the program [default: 30000]
+  -d, --debug         Enable debug logging
   -h, --help          Print help
   -V, --version       Print version
 ```
