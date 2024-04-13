@@ -12,14 +12,14 @@ Clone this repository with `git`, `cd` to the cloned repo directory and run the 
 ```text
 A Brainf**k interpreter written in Rust with minimal dependencies
 
-Usage: aneurysm.exe [OPTIONS] [filename]
+Usage: aneurysm [OPTIONS] [filename]
 
 Arguments:
   [filename]  Brainf**k file to execute [default: main.bf]
 
 Options:
   -m, --mem <memory>  The memory size in bytes/cells to allocate for the program [default: 30000]
-  -d, --debug         Enable debug logging
+  -v, --verbose       Enable verbose logging
   -h, --help          Print help
   -V, --version       Print version
 ```

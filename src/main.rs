@@ -134,7 +134,7 @@ fn main() {
                 .required(false),
         )
         .arg(
-            arg!(-d --debug "Enable debug logging")
+            arg!(-v --verbose "Enable verbose logging")
                 .value_parser(value_parser!(bool))
                 .required(false),
         )
@@ -143,16 +143,14 @@ fn main() {
     // Obtain the filename from them
     let filename = args.get_one::<String>("filename").expect("Error trying to obtain name of file to execute. This error shouldn't happen by default, since a default value is specified. Please report this error");
 
-    // Check whether or not debug logging is enabled
-    let debug_logging = args
-        .get_one::<bool>("debug")
-        .expect("Error trying to see wheteher debug logging is enabled or not")
+    // Check whether or not verbose logging is enabled
+    let verbose = args
+        .get_one::<bool>("verbose")
+        .expect("Error trying to see wheteher verbose logging is enabled or not")
         .clone();
 
-    println!("debug: {}", debug_logging);
-
     // Also, obtain the cell size
-    let cell_size = args
+    let cell_size = *args
         .get_one::<usize>("mem")
         .expect("Error while parsing command line argument \"memory\" to an integer");
 
@@ -172,7 +170,7 @@ fn main() {
         .chars()
         .collect::<Vec<char>>();
 
-    if debug_logging {
+    if verbose {
         println!("Successfully opened file {}", filename);
     }
 
@@ -186,16 +184,16 @@ fn main() {
     let mut data_pointer: usize = 0;
     let mut instruction_pointer: usize = 0;
 
-    let mut data: Vec<u8> = vec![0; *cell_size];
+    let mut data: Vec<u8> = vec![0; cell_size];
     // Creating a new vector might not allocate any memory
     // For this reason, we iterate through the vector and set all its items to 0
-    if debug_logging {
+    if verbose {
         print!("Allocating memory... ");
         // Flush to stdout
         let _ = stdout().flush();
     }
     data.iter_mut().for_each(|cell| *cell = 0);
-    if debug_logging {
+    if verbose {
         println!("done");
 
         println!("Start executing program...")
@@ -208,8 +206,8 @@ fn main() {
             .expect("Program reached EOF before it was expected");
 
         match character {
-            '>' => data_pointer = wrapping_change(data_pointer, true, *cell_size),
-            '<' => data_pointer = wrapping_change(data_pointer, false, *cell_size),
+            '>' => data_pointer = wrapping_change(data_pointer, true, cell_size),
+            '<' => data_pointer = wrapping_change(data_pointer, false, cell_size),
             '+' => data[data_pointer] = data[data_pointer].overflowing_add(1).0,
             '-' => data[data_pointer] = data[data_pointer].overflowing_sub(1).0,
             '.' => print!("{}", data[data_pointer] as char),
@@ -238,7 +236,7 @@ fn main() {
         instruction_pointer += 1;
     }
 
-    if debug_logging {
-        println!("Program terminated")
+    if verbose {
+        println!("Reached end of code data. Terminating...")
     }
 }

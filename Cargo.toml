@@ -2,13 +2,12 @@
 name = "aneurysm"
 version = "1.0.0"
 edition = "2021"
-publish = false
+publish = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [profile.release]
 strip = true  # Automatically strip symbols from the binary.
-opt-level = "z"  # Optimize for size.
 lto = true  # Optimize code as much as possible
 codegen-units = 1  # Use a single codegen unit for compilation, which also makes the code faster
 panic = "abort"  # Abort on panic, DON'T UNWIND (saves as from about 100KB worth of data in the resulting binary)
