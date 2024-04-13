@@ -2,6 +2,7 @@ use clap::{arg, command, value_parser, ArgMatches};
 use std::{
     fs,
     io::{self, stdout, Write},
+    ops::{Add, AddAssign, Deref, Sub, SubAssign},
     process::exit,
 };
 
@@ -44,17 +45,61 @@ fn get_loop(code: &Vec<char>, begin: usize, loops: &mut Vec<(usize, usize)>) -> 
 }
 
 /// Simulates a number overflow or underflow (used for the data pointer)
-fn wrapping_change(first: usize, add: bool, limit: usize) -> usize {
-    if first == limit - 1 && add {
-        0
-    } else if first == 0 && !add {
-        limit - 1
-    } else {
-        if add {
-            first + 1
-        } else {
-            first - 1
+#[derive(Clone, Copy)]
+pub struct WrappingUInt {
+    pub limit: usize,
+    uint: usize,
+}
+
+impl WrappingUInt {
+    fn new(uint: usize, limit: usize) -> Self {
+        Self { limit, uint }
+    }
+}
+
+impl Deref for WrappingUInt {
+    type Target = usize;
+
+    fn deref(&self) -> &Self::Target {
+        &self.uint
+    }
+}
+
+impl Add<usize> for WrappingUInt {
+    type Output = Self;
+
+    fn add(self, rhs: usize) -> Self::Output {
+        Self {
+            limit: self.limit,
+            uint: ((self.uint + rhs) % self.limit),
         }
+    }
+}
+
+impl AddAssign<usize> for WrappingUInt {
+    fn add_assign(&mut self, rhs: usize) {
+        *self = *self + rhs
+    }
+}
+
+impl Sub<usize> for WrappingUInt {
+    type Output = Self;
+
+    fn sub(self, rhs: usize) -> Self::Output {
+        Self {
+            limit: self.limit,
+            uint: if self.uint >= rhs {
+                self.uint - rhs
+            } else {
+                self.limit - 1 - ((rhs - self.uint - 1) % self.limit)
+            },
+        }
+    }
+}
+
+impl SubAssign<usize> for WrappingUInt {
+    fn sub_assign(&mut self, rhs: usize) {
+        *self = *self - rhs
     }
 }
 
@@ -75,7 +120,7 @@ fn read_char() -> char {
 
 #[cfg(test)]
 pub mod tests {
-    use crate::get_loop;
+    use crate::{get_loop, WrappingUInt};
 
     /// A test function that ensures that the [`get_loop`] function works correctly
     #[test]
@@ -115,6 +160,32 @@ pub mod tests {
                     .collect::<String>()
             )
         }
+    }
+
+    #[test]
+    fn wrapping_add() {
+        let wrapping = WrappingUInt::new(456, 1000);
+
+        assert_eq!(*(wrapping + 544), 0);
+        assert_eq!(*(wrapping + 543), 999);
+        assert_eq!(*(wrapping + 657), 113);
+
+        assert_eq!(*(wrapping + 1544), 0);
+        assert_eq!(*(wrapping + 1543), 999);
+        assert_eq!(*(wrapping + 1657), 113);
+    }
+
+    #[test]
+    fn wrapping_sub() {
+        let wrapping = WrappingUInt::new(456, 1000);
+
+        assert_eq!(*(wrapping - 456), 0);
+        assert_eq!(*(wrapping - 457), 999);
+        assert_eq!(*(wrapping - 584), 872);
+
+        assert_eq!(*(wrapping - 1456), 0);
+        assert_eq!(*(wrapping - 1457), 999);
+        assert_eq!(*(wrapping - 1584), 872);
     }
 }
 
@@ -181,7 +252,7 @@ fn main() {
     get_loop(&code, 0, &mut loops);
 
     // Allocate some memory for the data array, as well as the data pointer and the instruction pointer
-    let mut data_pointer: usize = 0;
+    let mut data_pointer: WrappingUInt = WrappingUInt::new(0, cell_size);
     let mut instruction_pointer: usize = 0;
 
     let mut data: Vec<u8> = vec![0; cell_size];
@@ -206,14 +277,14 @@ fn main() {
             .expect("Program reached EOF before it was expected");
 
         match character {
-            '>' => data_pointer = wrapping_change(data_pointer, true, cell_size),
-            '<' => data_pointer = wrapping_change(data_pointer, false, cell_size),
-            '+' => data[data_pointer] = data[data_pointer].overflowing_add(1).0,
-            '-' => data[data_pointer] = data[data_pointer].overflowing_sub(1).0,
-            '.' => print!("{}", data[data_pointer] as char),
-            ',' => data[data_pointer] = read_char() as u8,
+            '>' => data_pointer += 1,
+            '<' => data_pointer -= 1,
+            '+' => data[*data_pointer] = data[*data_pointer].overflowing_add(1).0,
+            '-' => data[*data_pointer] = data[*data_pointer].overflowing_sub(1).0,
+            '.' => print!("{}", data[*data_pointer] as char),
+            ',' => data[*data_pointer] = read_char() as u8,
             '[' => {
-                if data[data_pointer] == 0 {
+                if data[*data_pointer] == 0 {
                     instruction_pointer = loops
                         .iter()
                         .find(|(first, _)| first == &instruction_pointer)
@@ -222,7 +293,7 @@ fn main() {
                 }
             }
             ']' => {
-                if data[data_pointer] != 0 {
+                if data[*data_pointer] != 0 {
                     instruction_pointer = loops
                         .iter()
                         .find(|(_, second)| second == &instruction_pointer)
