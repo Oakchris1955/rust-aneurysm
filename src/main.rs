@@ -23,9 +23,7 @@ fn get_loop(code: &Vec<char>, begin: usize, loops: &mut Loops) -> usize {
     // Loop through each char in the Vec, beginning from the parameter index
     while index < code.len() {
         // Obtain the corresponding character
-        let character = code
-            .get(index)
-            .expect("Unexpected error while trying to index loops. Please report this error");
+        let character = code[index];
 
         match character {
             // If it is the beginning of the loop, run the same function, BUT begin on a different index.
@@ -284,9 +282,7 @@ fn main() {
 
     // Loop through each character and process it accordingly
     while instruction_pointer < code.len() {
-        let character = code
-            .get(instruction_pointer)
-            .expect("Program reached EOF before it was expected");
+        let character = code[instruction_pointer];
 
         match character {
             '>' => data_pointer += 1,
