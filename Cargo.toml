@@ -18,4 +18,4 @@ lto = false
 codegen-units = 16
 
 [dependencies]
-clap = { version = "4.3.3", features = ["cargo"] }
+clap = { version = "4.3.3", features = ["cargo", "derive"] }

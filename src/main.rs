@@ -1,4 +1,4 @@
-use clap::{arg, command, value_parser, ArgMatches};
+use clap::{arg, command, Parser};
 use std::{
     fs,
     io::{self, stdout, Write},
@@ -10,7 +10,7 @@ use std::{
 const DEFAULT_FILENAME: &str = "main.bf";
 
 /// The default cell size to use in case one isn't specified by the user
-const DEFAULT_CELL_SIZE: &str = "30000";
+const DEFAULT_CELL_SIZE: usize = 30000;
 
 /// A recursive function that searches for loops within a BF file
 fn get_loop(code: &Vec<char>, begin: usize, loops: &mut Vec<(usize, usize)>) -> usize {
@@ -118,6 +118,25 @@ fn read_char() -> char {
     }
 }
 
+#[derive(Parser)]
+#[command(
+    version,
+    about = "A Brainf**k interpreter written in Rust with minimal dependencies"
+)]
+struct Args {
+    /// Brainf**k file to execute
+    #[arg(default_value = DEFAULT_FILENAME)]
+    filename: String,
+
+    /// The memory size in bytes/cells to allocate for the program
+    #[arg(short = 'm', long = "mem", default_value_t = DEFAULT_CELL_SIZE, value_name = "memory")]
+    cell_size: usize,
+
+    /// Enable verbose logging
+    #[arg(short)]
+    verbose: bool,
+}
+
 #[cfg(test)]
 pub mod tests {
     use crate::{get_loop, WrappingUInt};
@@ -191,49 +210,20 @@ pub mod tests {
 
 fn main() {
     // Obtain command line parameters
-    let args: ArgMatches = command!()
-        .about("A Brainf**k interpreter written in Rust with minimal dependencies")
-        .arg(
-            arg!([filename] "Brainf**k file to execute")
-                .default_value(DEFAULT_FILENAME)
-                .required(false),
-        )
-        .arg(
-            arg!(-m --mem <memory> "The memory size in bytes/cells to allocate for the program")
-                .default_value(DEFAULT_CELL_SIZE)
-                .value_parser(value_parser!(usize))
-                .required(false),
-        )
-        .arg(
-            arg!(-v --verbose "Enable verbose logging")
-                .value_parser(value_parser!(bool))
-                .required(false),
-        )
-        .get_matches();
-
-    // Obtain the filename from them
-    let filename = args.get_one::<String>("filename").expect("Error trying to obtain name of file to execute. This error shouldn't happen by default, since a default value is specified. Please report this error");
-
-    // Check whether or not verbose logging is enabled
-    let verbose = args
-        .get_one::<bool>("verbose")
-        .expect("Error trying to see wheteher verbose logging is enabled or not")
-        .clone();
-
-    // Also, obtain the cell size
-    let cell_size = *args
-        .get_one::<usize>("mem")
-        .expect("Error while parsing command line argument \"memory\" to an integer");
+    let args = Args::parse();
 
     // Read file contents (or terminate if an error occurs while doing so)
-    let mut code = fs::read_to_string(filename)
+    let mut code = fs::read_to_string(&args.filename)
         .unwrap_or_else(|error| {
             match error.kind() {
-                io::ErrorKind::NotFound => eprintln!("File {} not found", filename),
+                io::ErrorKind::NotFound => eprintln!("File {} not found", &args.filename),
                 io::ErrorKind::PermissionDenied => {
                     eprintln!("Couldn't open file due to a permission error")
                 }
-                _ => eprintln!("An unknown error occured while opening file {}", filename),
+                _ => eprintln!(
+                    "An unknown error occured while opening file {}",
+                    &args.filename
+                ),
             };
 
             exit(1)
@@ -247,8 +237,8 @@ fn main() {
         _ => false,
     });
 
-    if verbose {
-        println!("Successfully opened file {}", filename);
+    if args.verbose {
+        println!("Successfully opened file {}", &args.filename);
     }
 
     // Initialize a Vec to store the loops' start and end
@@ -258,19 +248,19 @@ fn main() {
     get_loop(&code, 0, &mut loops);
 
     // Allocate some memory for the data array, as well as the data pointer and the instruction pointer
-    let mut data_pointer: WrappingUInt = WrappingUInt::new(0, cell_size);
+    let mut data_pointer: WrappingUInt = WrappingUInt::new(0, args.cell_size);
     let mut instruction_pointer: usize = 0;
 
-    let mut data: Vec<u8> = vec![0; cell_size];
+    let mut data: Vec<u8> = vec![0; args.cell_size];
     // Creating a new vector might not allocate any memory
     // For this reason, we iterate through the vector and set all its items to 0
-    if verbose {
+    if args.verbose {
         print!("Allocating memory... ");
         // Flush to stdout
         let _ = stdout().flush();
     }
     data.iter_mut().for_each(|cell| *cell = 0);
-    if verbose {
+    if args.verbose {
         println!("done");
 
         println!("Start executing program...")
@@ -313,7 +303,7 @@ fn main() {
         instruction_pointer += 1;
     }
 
-    if verbose {
+    if args.verbose {
         println!("Reached end of code data. Terminating...")
     }
 }
