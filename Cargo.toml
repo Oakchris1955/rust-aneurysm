@@ -19,3 +19,4 @@ codegen-units = 16
 
 [dependencies]
 clap = { version = "4.3.3", features = ["cargo", "derive"] }
+bimap = "0.6.3"

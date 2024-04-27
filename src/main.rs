@@ -1,3 +1,4 @@
+use bimap::BiMap;
 use clap::{arg, command, Parser};
 use std::{
     fs,
@@ -12,8 +13,10 @@ const DEFAULT_FILENAME: &str = "main.bf";
 /// The default cell size to use in case one isn't specified by the user
 const DEFAULT_CELL_SIZE: usize = 30000;
 
+type Loops = BiMap<usize, usize>;
+
 /// A recursive function that searches for loops within a BF file
-fn get_loop(code: &Vec<char>, begin: usize, loops: &mut Vec<(usize, usize)>) -> usize {
+fn get_loop(code: &Vec<char>, begin: usize, loops: &mut Loops) -> usize {
     // Begin reading the code from a parameter index
     let mut index = begin;
 
@@ -30,7 +33,7 @@ fn get_loop(code: &Vec<char>, begin: usize, loops: &mut Vec<(usize, usize)>) -> 
             '[' => index = get_loop(code, index + 1, loops),
             // If it is the end of the loop, push a new loop tuple into the loops Vec and return with the current index
             ']' => {
-                loops.push((begin - 1, index));
+                loops.insert(begin - 1, index);
                 return index;
             }
             _ => (),
@@ -139,20 +142,21 @@ struct Args {
 
 #[cfg(test)]
 pub mod tests {
-    use crate::{get_loop, WrappingUInt};
+    use crate::{get_loop, Loops, WrappingUInt};
+    use bimap::BiMap;
 
     /// A test function that ensures that the [`get_loop`] function works correctly
     #[test]
     fn test_loop_finder() {
         // The cases against which to check
-        const TEST_CASES: &[(&str, &[(usize, usize)])] = &[
+        static TEST_CASES: &[(&str, &[(usize, usize)])] = &[
             ("[]", &[(0, 1)]),
             (" []", &[(1, 2)]),
             ("[[] []]", &[(0, 6), (1, 2), (4, 5)]),
         ];
 
         // Initialize some variables
-        let mut loops: Vec<(usize, usize)> = Vec::new();
+        let mut loops: Loops = BiMap::new();
         let mut failed_cases: Vec<&str> = Vec::new();
 
         // Run the tests. In case a test fails, DON'T PANIC, just push the failed case into the failed_cases Vec
@@ -160,12 +164,24 @@ pub mod tests {
             loops.clear();
 
             get_loop(&text.chars().collect::<Vec<char>>(), 0, &mut loops);
-            loops.sort();
 
-            if test_case != &loops.as_slice() {
+            // Convert BiMap to a vector
+            let mut loop_slice: Vec<(usize, usize)> =
+                loops.iter().map(|(left, right)| (*left, *right)).collect();
+
+            // Sort that vector
+            loop_slice.sort();
+
+            if test_case != &loop_slice {
                 failed_cases.push(&text)
             }
         }
+
+        get_loop(
+            &TEST_CASES[1].0.chars().collect::<Vec<char>>(),
+            0,
+            &mut loops,
+        );
 
         // If there is at least 1 fail, panic with a custom message
         if !failed_cases.is_empty() {
@@ -242,7 +258,7 @@ fn main() {
     }
 
     // Initialize a Vec to store the loops' start and end
-    let mut loops: Vec<(usize, usize)> = Vec::new();
+    let mut loops: Loops = BiMap::new();
 
     // Obtain loops' data
     get_loop(&code, 0, &mut loops);
@@ -281,20 +297,12 @@ fn main() {
             ',' => data[*data_pointer] = read_char() as u8,
             '[' => {
                 if data[*data_pointer] == 0 {
-                    instruction_pointer = loops
-                        .iter()
-                        .find(|(first, _)| first == &instruction_pointer)
-                        .unwrap()
-                        .1
+                    instruction_pointer = *loops.get_by_left(&instruction_pointer).unwrap()
                 }
             }
             ']' => {
                 if data[*data_pointer] != 0 {
-                    instruction_pointer = loops
-                        .iter()
-                        .find(|(_, second)| second == &instruction_pointer)
-                        .unwrap()
-                        .0
+                    instruction_pointer = *loops.get_by_right(&instruction_pointer).unwrap()
                 }
             }
             _ => (),
