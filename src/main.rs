@@ -226,7 +226,7 @@ fn main() {
         .expect("Error while parsing command line argument \"memory\" to an integer");
 
     // Read file contents (or terminate if an error occurs while doing so)
-    let code = fs::read_to_string(filename)
+    let mut code = fs::read_to_string(filename)
         .unwrap_or_else(|error| {
             match error.kind() {
                 io::ErrorKind::NotFound => eprintln!("File {} not found", filename),
@@ -240,6 +240,12 @@ fn main() {
         })
         .chars()
         .collect::<Vec<char>>();
+
+    // Remove all non-instruction characters
+    code.retain(|c| match c {
+        '>' | '<' | '+' | '-' | '.' | ',' | '[' | ']' => true,
+        _ => false,
+    });
 
     if verbose {
         println!("Successfully opened file {}", filename);
