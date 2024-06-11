@@ -1,19 +1,22 @@
 [package]
 name = "aneurysm"
 version = "1.0.0"
+description = "Yet Another Brainf**k interpreter"
+license = "MIT"
+repository = "https://github.com/Oakchris1955/rust-aneurysm"
 edition = "2021"
 publish = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [profile.release]
-strip = true  # Automatically strip symbols from the binary.
-lto = true  # Optimize code as much as possible
-codegen-units = 1  # Use a single codegen unit for compilation, which also makes the code faster
+strip = true      # Automatically strip symbols from the binary.
+lto = true        # Optimize code as much as possible
+codegen-units = 1 # Use a single codegen unit for compilation, which also makes the code faster
 
 [dependencies]
 clap = { version = "4.3.3", features = ["cargo", "derive"] }
 bimap = "0.6.3"
-simple_logger = {version = "5.0.0", features = ["stderr"] }
+simple_logger = { version = "5.0.0", features = ["stderr"] }
 log = "0.4.21"
 thousands = "0.2.0"
