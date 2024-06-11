@@ -1,5 +1,11 @@
 use bimap::BiMap;
 use clap::{arg, command, Parser};
+// yep, we need an external crate to format numbers with separators
+use thousands::Separable;
+
+use log::{error, info, LevelFilter};
+use simple_logger::SimpleLogger;
+
 use std::{
     fs,
     io::{self, stdout, Write},
@@ -134,7 +140,7 @@ struct Args {
     cell_size: usize,
 
     /// Enable verbose logging
-    #[arg(short)]
+    #[arg(short, long)]
     verbose: bool,
 }
 
@@ -226,15 +232,23 @@ fn main() {
     // Obtain command line parameters
     let args = Args::parse();
 
+    // Initialize logger
+    let log_level = if args.verbose {
+        LevelFilter::Info
+    } else {
+        LevelFilter::Warn
+    };
+    SimpleLogger::new().with_level(log_level).init().unwrap();
+
     // Read file contents (or terminate if an error occurs while doing so)
     let mut code = fs::read_to_string(&args.filename)
         .unwrap_or_else(|error| {
             match error.kind() {
-                io::ErrorKind::NotFound => eprintln!("File {} not found", &args.filename),
+                io::ErrorKind::NotFound => error!("File {} not found", &args.filename),
                 io::ErrorKind::PermissionDenied => {
-                    eprintln!("Couldn't open file due to a permission error")
+                    error!("Couldn't open file due to a permission error")
                 }
-                _ => eprintln!(
+                _ => error!(
                     "An unknown error occured while opening file {}",
                     &args.filename
                 ),
@@ -251,9 +265,7 @@ fn main() {
         _ => false,
     });
 
-    if args.verbose {
-        println!("Successfully opened file {}", &args.filename);
-    }
+    info!("Successfully opened file {}", &args.filename);
 
     // Initialize a Vec to store the loops' start and end
     let mut loops: Loops = BiMap::new();
@@ -265,20 +277,23 @@ fn main() {
     let mut data_pointer: WrappingUInt = WrappingUInt::new(0, args.cell_size);
     let mut instruction_pointer: usize = 0;
 
+    info!("Allocating memory... ");
     let mut data: Vec<u8> = vec![0; args.cell_size];
     // Creating a new vector might not allocate any memory
     // For this reason, we iterate through the vector and set all its items to 0
-    if args.verbose {
-        print!("Allocating memory... ");
-        // Flush to stdout
-        let _ = stdout().flush();
-    }
+    // Flush to stdout
+    stdout().flush().unwrap();
     data.iter_mut().for_each(|cell| *cell = 0);
-    if args.verbose {
-        println!("done");
 
-        println!("Start executing program...")
-    }
+    info!(
+        "Allocated {} bytes in total",
+        // In the 22nd General Conference on Weights and Measures, it was declared that:
+        // numbers may be divided in groups of three in order to facilitate reading;
+        // neither dots nor commas are ever inserted in the spaces between groups
+        args.cell_size.separate_with_spaces()
+    );
+
+    info!("Start executing program...");
 
     // Loop through each character and process it accordingly
     while instruction_pointer < code.len() {
@@ -307,7 +322,5 @@ fn main() {
         instruction_pointer += 1;
     }
 
-    if args.verbose {
-        println!("Reached end of code data. Terminating...")
-    }
+    info!("Reached end of code data. Terminating...")
 }

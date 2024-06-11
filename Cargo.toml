@@ -14,3 +14,6 @@ codegen-units = 1  # Use a single codegen unit for compilation, which also makes
 [dependencies]
 clap = { version = "4.3.3", features = ["cargo", "derive"] }
 bimap = "0.6.3"
+simple_logger = {version = "5.0.0", features = ["stderr"] }
+log = "0.4.21"
+thousands = "0.2.0"
