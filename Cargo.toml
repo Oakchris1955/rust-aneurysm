@@ -10,12 +10,6 @@ publish = true
 strip = true  # Automatically strip symbols from the binary.
 lto = true  # Optimize code as much as possible
 codegen-units = 1  # Use a single codegen unit for compilation, which also makes the code faster
-panic = "abort"  # Abort on panic, DON'T UNWIND (saves as from about 100KB worth of data in the resulting binary)
-
-[profile.release-quick] # Same as the release profile, but faster compilation times and slower code
-inherits = "release"
-lto = false
-codegen-units = 16
 
 [dependencies]
 clap = { version = "4.3.3", features = ["cargo", "derive"] }
