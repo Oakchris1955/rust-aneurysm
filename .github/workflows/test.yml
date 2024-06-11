@@ -3,10 +3,11 @@ name: Run Cargo tests
 on:
   workflow_dispatch:
   push:
-    branches: [github.event.repository.default_branch]
+    branches:
+      - main
   pull_request:
-    branches: [github.event.repository.default_branch]
-
+    branches:
+      - main
 env:
   CARGO_TERM_COLOR: always
 
