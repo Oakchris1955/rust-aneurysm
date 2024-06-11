@@ -4,8 +4,7 @@ An interpreter for `.bf` files (or any file that is written for the Brainf\*\*k 
 
 ## Installing / Compiling
 
-(Note: make sure you have `git` and the `cargo` tool installed before doing this)
-Clone this repository with `git`, `cd` to the cloned repo directory and run the `build.sh` script to create an exewcutable in the repo's main directory
+### SOON
 
 ## Usage
 
