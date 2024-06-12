@@ -22,3 +22,10 @@ Options:
   -h, --help          Print help
   -V, --version       Print version
 ```
+
+## TODO
+
+- [ ] Add generics for the `WrappingUInt` struct, rename it to `Modular` and move it to its own submodule
+- [ ] Separate crate for `modular` submodule
+- [ ] Debugger (preferable some kind of remote server that can be used with existing debuggers)
+- [ ] Compiler?
