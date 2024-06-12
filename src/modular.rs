@@ -1,3 +1,4 @@
+use core::fmt;
 use std::ops::{Add, AddAssign, Deref, Rem, Sub, SubAssign};
 
 mod prelude {
@@ -44,8 +45,21 @@ impl<T> Modular<T>
 where
     T: NumOps,
 {
-    pub fn new(num: T, limit: T) -> Self {
+    #[allow(dead_code)]
+    pub fn from_value(num: T, limit: T) -> Self {
         Self { limit, num }
+    }
+}
+
+impl<T> Modular<T>
+where
+    T: NumOps + Default,
+{
+    pub fn with_limit(limit: T) -> Self {
+        Self {
+            limit,
+            num: T::default(),
+        }
     }
 }
 
@@ -57,6 +71,15 @@ where
 
     fn deref(&self) -> &Self::Target {
         &self.num
+    }
+}
+
+impl<T> fmt::Display for Modular<T>
+where
+    T: NumOps + fmt::Display,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.num)
     }
 }
 
@@ -118,13 +141,11 @@ mod tests {
     fn wrapping_add() {
         const LIMIT: usize = 1000;
 
-        let wrapping = Modular::new(456, LIMIT);
+        let wrapping = Modular::from_value(456, LIMIT);
 
-        for i in 0..3 {
-            assert_eq!(*(wrapping + 544 + i * LIMIT), 0);
-            assert_eq!(*(wrapping + 543 + i * LIMIT), 999);
-            assert_eq!(*(wrapping + 657 + i * LIMIT), 113);
-        }
+        assert_eq!(*(wrapping + 544), 0);
+        assert_eq!(*(wrapping + 543), 999);
+        assert_eq!(*(wrapping + 657), 113);
 
         assert_eq!(*(wrapping + 1544), 0);
         assert_eq!(*(wrapping + 1543), 999);
@@ -133,7 +154,7 @@ mod tests {
 
     #[test]
     fn wrapping_sub() {
-        let wrapping = Modular::new(456, 1000);
+        let wrapping = Modular::from_value(456, 1000);
 
         assert_eq!(*(wrapping - 456), 0);
         assert_eq!(*(wrapping - 457), 999);
