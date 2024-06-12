@@ -6,12 +6,10 @@ use thousands::Separable;
 use log::{error, info, LevelFilter};
 use simple_logger::SimpleLogger;
 
-use std::{
-    fs,
-    io::{self, stdout, Write},
-    ops::{Add, AddAssign, Deref, Sub, SubAssign},
-    process::exit,
-};
+use std::{fs, io, process::exit};
+
+mod modular;
+use modular::*;
 
 /// The default filename to use in case one isn't specified by the user
 const DEFAULT_FILENAME: &str = "main.bf";
@@ -51,65 +49,6 @@ fn get_loop(code: &Vec<char>, begin: usize, loops: &mut Loops) -> usize {
     code.len()
 }
 
-/// Simulates a number overflow or underflow (used for the data pointer)
-#[derive(Clone, Copy)]
-pub struct WrappingUInt {
-    pub limit: usize,
-    uint: usize,
-}
-
-impl WrappingUInt {
-    fn new(uint: usize, limit: usize) -> Self {
-        Self { limit, uint }
-    }
-}
-
-impl Deref for WrappingUInt {
-    type Target = usize;
-
-    fn deref(&self) -> &Self::Target {
-        &self.uint
-    }
-}
-
-impl Add<usize> for WrappingUInt {
-    type Output = Self;
-
-    fn add(self, rhs: usize) -> Self::Output {
-        Self {
-            limit: self.limit,
-            uint: ((self.uint + rhs) % self.limit),
-        }
-    }
-}
-
-impl AddAssign<usize> for WrappingUInt {
-    fn add_assign(&mut self, rhs: usize) {
-        *self = *self + rhs
-    }
-}
-
-impl Sub<usize> for WrappingUInt {
-    type Output = Self;
-
-    fn sub(self, rhs: usize) -> Self::Output {
-        Self {
-            limit: self.limit,
-            uint: if self.uint >= rhs {
-                self.uint - rhs
-            } else {
-                self.limit - 1 - ((rhs - self.uint - 1) % self.limit)
-            },
-        }
-    }
-}
-
-impl SubAssign<usize> for WrappingUInt {
-    fn sub_assign(&mut self, rhs: usize) {
-        *self = *self - rhs
-    }
-}
-
 /// Read a single [`char`] from the [`Stdin`](`io::Stdin`)
 fn read_char() -> char {
     let mut input = String::new();
@@ -146,7 +85,7 @@ struct Args {
 
 #[cfg(test)]
 pub mod tests {
-    use crate::{get_loop, Loops, WrappingUInt};
+    use crate::{get_loop, Loops};
     use bimap::BiMap;
 
     /// A test function that ensures that the [`get_loop`] function works correctly
@@ -200,32 +139,6 @@ pub mod tests {
             )
         }
     }
-
-    #[test]
-    fn wrapping_add() {
-        let wrapping = WrappingUInt::new(456, 1000);
-
-        assert_eq!(*(wrapping + 544), 0);
-        assert_eq!(*(wrapping + 543), 999);
-        assert_eq!(*(wrapping + 657), 113);
-
-        assert_eq!(*(wrapping + 1544), 0);
-        assert_eq!(*(wrapping + 1543), 999);
-        assert_eq!(*(wrapping + 1657), 113);
-    }
-
-    #[test]
-    fn wrapping_sub() {
-        let wrapping = WrappingUInt::new(456, 1000);
-
-        assert_eq!(*(wrapping - 456), 0);
-        assert_eq!(*(wrapping - 457), 999);
-        assert_eq!(*(wrapping - 584), 872);
-
-        assert_eq!(*(wrapping - 1456), 0);
-        assert_eq!(*(wrapping - 1457), 999);
-        assert_eq!(*(wrapping - 1584), 872);
-    }
 }
 
 fn main() {
@@ -274,15 +187,13 @@ fn main() {
     get_loop(&code, 0, &mut loops);
 
     // Allocate some memory for the data array, as well as the data pointer and the instruction pointer
-    let mut data_pointer: WrappingUInt = WrappingUInt::new(0, args.cell_size);
+    let mut data_pointer: Modular<_> = Modular::new(0, args.cell_size);
     let mut instruction_pointer: usize = 0;
 
     info!("Allocating memory... ");
     let mut data: Vec<u8> = vec![0; args.cell_size];
     // Creating a new vector might not allocate any memory
     // For this reason, we iterate through the vector and set all its items to 0
-    // Flush to stdout
-    stdout().flush().unwrap();
     data.iter_mut().for_each(|cell| *cell = 0);
 
     info!(
