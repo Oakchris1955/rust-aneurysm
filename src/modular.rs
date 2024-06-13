@@ -1,7 +1,7 @@
 use core::fmt;
 use std::ops::{Add, AddAssign, Deref, Rem, Sub, SubAssign};
 
-mod prelude {
+pub mod prelude {
     use super::*;
 
     pub trait NumOps:
@@ -29,7 +29,7 @@ mod prelude {
     {
     }
 }
-pub use prelude::*;
+use prelude::*;
 
 /// Simulates modular arithmetic (used for the data pointer)
 #[derive(Clone, Copy)]
@@ -87,13 +87,46 @@ impl<T> Add<T> for Modular<T>
 where
     T: NumOps,
 {
-    type Output = Self;
+    type Output = Modular<T>;
 
     fn add(self, rhs: T) -> Self::Output {
         Self {
             limit: self.limit,
             num: ((self.num + rhs) % self.limit),
         }
+    }
+}
+
+impl<T> Add<&T> for Modular<T>
+where
+    T: NumOps,
+{
+    type Output = Modular<T>;
+
+    fn add(self, rhs: &T) -> Self::Output {
+        self + *rhs
+    }
+}
+
+impl<T> Add<T> for &Modular<T>
+where
+    T: NumOps,
+{
+    type Output = Modular<T>;
+
+    fn add(self, rhs: T) -> Self::Output {
+        *self + rhs
+    }
+}
+
+impl<T> Add<&T> for &Modular<T>
+where
+    T: NumOps,
+{
+    type Output = Modular<T>;
+
+    fn add(self, rhs: &T) -> Self::Output {
+        *self + *rhs
     }
 }
 
@@ -106,11 +139,38 @@ where
     }
 }
 
+impl<T> AddAssign<&T> for Modular<T>
+where
+    T: NumOps,
+{
+    fn add_assign(&mut self, rhs: &T) {
+        *self += *rhs
+    }
+}
+
+impl<T> AddAssign<T> for &mut Modular<T>
+where
+    T: NumOps,
+{
+    fn add_assign(&mut self, rhs: T) {
+        **self = **self + rhs
+    }
+}
+
+impl<T> AddAssign<&T> for &mut Modular<T>
+where
+    T: NumOps,
+{
+    fn add_assign(&mut self, rhs: &T) {
+        **self += *rhs
+    }
+}
+
 impl<T> Sub<T> for Modular<T>
 where
     T: NumOps,
 {
-    type Output = Self;
+    type Output = Modular<T>;
 
     fn sub(self, rhs: T) -> Self::Output {
         Self {
@@ -124,6 +184,39 @@ where
     }
 }
 
+impl<T> Sub<&T> for Modular<T>
+where
+    T: NumOps,
+{
+    type Output = Modular<T>;
+
+    fn sub(self, rhs: &T) -> Self::Output {
+        self - *rhs
+    }
+}
+
+impl<T> Sub<T> for &Modular<T>
+where
+    T: NumOps,
+{
+    type Output = Modular<T>;
+
+    fn sub(self, rhs: T) -> Self::Output {
+        *self - rhs
+    }
+}
+
+impl<T> Sub<&T> for &Modular<T>
+where
+    T: NumOps,
+{
+    type Output = Modular<T>;
+
+    fn sub(self, rhs: &T) -> Self::Output {
+        *self - *rhs
+    }
+}
+
 impl<T> SubAssign<T> for Modular<T>
 where
     T: NumOps,
@@ -133,35 +226,62 @@ where
     }
 }
 
+impl<T> SubAssign<&T> for Modular<T>
+where
+    T: NumOps,
+{
+    fn sub_assign(&mut self, rhs: &T) {
+        *self -= *rhs
+    }
+}
+
+impl<T> SubAssign<T> for &mut Modular<T>
+where
+    T: NumOps,
+{
+    fn sub_assign(&mut self, rhs: T) {
+        **self = **self - rhs
+    }
+}
+
+impl<T> SubAssign<&T> for &mut Modular<T>
+where
+    T: NumOps,
+{
+    fn sub_assign(&mut self, rhs: &T) {
+        **self -= *rhs
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::Modular;
 
     #[test]
-    fn wrapping_add() {
+    fn modular_add() {
         const LIMIT: usize = 1000;
 
-        let wrapping = Modular::from_value(456, LIMIT);
+        let modular = Modular::from_value(456, LIMIT);
 
-        assert_eq!(*(wrapping + 544), 0);
-        assert_eq!(*(wrapping + 543), 999);
-        assert_eq!(*(wrapping + 657), 113);
-
-        assert_eq!(*(wrapping + 1544), 0);
-        assert_eq!(*(wrapping + 1543), 999);
-        assert_eq!(*(wrapping + 1657), 113);
+        for i in 0..3 {
+            assert_eq!(*(modular + 544 + i * LIMIT), 0);
+            assert_eq!(*(modular + &543 + i * LIMIT), 999);
+            assert_eq!(*(&modular + 657 + i * LIMIT), 113);
+            assert_eq!(*(&modular + &732 + i * LIMIT), 188)
+        }
     }
 
     #[test]
-    fn wrapping_sub() {
-        let wrapping = Modular::from_value(456, 1000);
+    fn modular_sub() {
+        const LIMIT: usize = 1000;
 
-        assert_eq!(*(wrapping - 456), 0);
-        assert_eq!(*(wrapping - 457), 999);
-        assert_eq!(*(wrapping - 584), 872);
+        let modular = Modular::from_value(456, LIMIT);
 
-        assert_eq!(*(wrapping - 1456), 0);
-        assert_eq!(*(wrapping - 1457), 999);
-        assert_eq!(*(wrapping - 1584), 872);
+        for i in 0..3 {
+            assert_eq!(*(modular - 456 + i * LIMIT), 0);
+            assert_eq!(*(modular - &457 + i * LIMIT), 999);
+            assert_eq!(*(&modular - 584 + i * LIMIT), 872);
+            assert_eq!(*(&modular - &338 + i * LIMIT), 118)
+        }
     }
 }
