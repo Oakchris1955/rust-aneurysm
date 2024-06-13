@@ -1,8 +1,8 @@
 use clap::{arg, command, Parser};
-use log::{error, info, LevelFilter};
+use log::{info, LevelFilter};
 use simple_logger::SimpleLogger;
 
-use std::{fs, io, process::exit};
+use std::process::exit;
 
 mod input;
 mod interpreter;
@@ -40,25 +40,8 @@ fn main() {
     };
     SimpleLogger::new().with_level(log_level).init().unwrap();
 
-    // Read file contents (or terminate if an error occurs while doing so)
-    let code = fs::read_to_string(&args.filename).unwrap_or_else(|error| {
-        match error.kind() {
-            io::ErrorKind::NotFound => error!("File {} not found", &args.filename),
-            io::ErrorKind::PermissionDenied => {
-                error!("Couldn't open file due to a permission error")
-            }
-            _ => error!(
-                "An unknown error occured while opening file {}",
-                &args.filename
-            ),
-        };
-
-        exit(1)
-    });
-
-    info!("Successfully opened file {}", &args.filename);
-
-    let mut interpreter = Interpreter::new(code, args.cell_size);
+    let mut interpreter =
+        Interpreter::new_from_path(&args.filename, args.cell_size).unwrap_or_else(|_| exit(1));
 
     info!("Start executing program...");
     interpreter.run_to_end();

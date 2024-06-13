@@ -1,7 +1,7 @@
-use std::io;
+use std::{fs, io, path::Path};
 
 use bimap::BiMap;
-use log::info;
+use log::{error, info};
 // yep, we need an external crate to format numbers with separators
 use thousands::Separable;
 
@@ -64,6 +64,34 @@ impl<'a, 'b> Interpreter<'a, 'b> {
 
             source: None,
             sink: None,
+        }
+    }
+
+    pub fn new_from_path<P>(path: P, num_of_cells: usize) -> io::Result<Self>
+    where
+        P: AsRef<Path>,
+    {
+        let path = path.as_ref();
+
+        // Read file contents (or return an error if one occurs while doing so)
+        match fs::read_to_string(path) {
+            Ok(code) => {
+                info!("Successfully opened file {}", path.display());
+                Ok(Self::new(code, num_of_cells))
+            }
+            Err(error) => {
+                match error.kind() {
+                    io::ErrorKind::NotFound => error!("File {} not found", path.display()),
+                    io::ErrorKind::PermissionDenied => {
+                        error!("Couldn't open file due to a permission error")
+                    }
+                    _ => error!(
+                        "An unknown error occured while opening file {}",
+                        path.display()
+                    ),
+                };
+                Err(error)
+            }
         }
     }
 
