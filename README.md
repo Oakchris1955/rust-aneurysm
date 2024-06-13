@@ -4,7 +4,7 @@ An interpreter for `.bf` files (or any file that is written for the Brainf\*\*k 
 
 ## Installing / Compiling
 
-### SOON
+If you have Cargo installed, simply run `cargo install aneurysm`. If you have already installed this package and want to update to the latest version, run `cargo install --force aneurysm`
 
 ## Usage
 
