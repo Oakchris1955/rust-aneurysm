@@ -1,11 +1,17 @@
-use std::{fs, io, path::Path};
+use std::{
+    fs,
+    io::{self, Write},
+    path::Path,
+};
 
 use bimap::BiMap;
+// I am trying to keep dependencies to a minimum, but as you can see, that's easier said than done
+use console;
 use log::{error, info};
 // yep, we need an external crate to format numbers with separators
 use thousands::Separable;
 
-use crate::{input::*, modular::Modular};
+use crate::modular::Modular;
 
 /// The default filename to use in case one isn't specified by the user
 pub const DEFAULT_FILENAME: &str = "main.bf";
@@ -27,12 +33,18 @@ pub struct Interpreter<'a, 'b> {
     pub sink: Option<&'a mut dyn io::Write>,
     /// If this is unset, will read from stdin
     pub source: Option<&'b mut dyn io::Read>,
+
+    _console: console::Term,
+    _stdout_echo: bool,
 }
 
 impl<'a, 'b> Interpreter<'a, 'b> {
-    pub fn new(code: String, num_of_cells: usize) -> Self {
+    pub fn new<S>(code: S, num_of_cells: usize) -> Self
+    where
+        S: ToString,
+    {
         // turn the code String into a char vector
-        let mut code = code.chars().collect::<Vec<char>>();
+        let mut code = code.to_string().chars().collect::<Vec<char>>();
 
         // Remove all non-instruction characters
         Self::remove_comments(&mut code);
@@ -64,6 +76,9 @@ impl<'a, 'b> Interpreter<'a, 'b> {
 
             source: None,
             sink: None,
+
+            _console: console::Term::stdout(),
+            _stdout_echo: false,
         }
     }
 
@@ -119,7 +134,10 @@ impl<'a, 'b> Interpreter<'a, 'b> {
                 Some(writable) => writable
                     .write_all(&[self.data[*self.data_pointer]])
                     .unwrap(),
-                None => print!("{}", self.data[*self.data_pointer] as char),
+                None => {
+                    print!("{}", self.data[*self.data_pointer] as char);
+                    io::stdout().flush().unwrap()
+                }
             },
             ',' => match &mut self.source {
                 Some(readable) => {
@@ -127,7 +145,19 @@ impl<'a, 'b> Interpreter<'a, 'b> {
                     readable.read_exact(&mut buf).unwrap();
                     self.data[*self.data_pointer] = buf[0];
                 }
-                None => self.data[*self.data_pointer] = read_char() as u8,
+                None => {
+                    while let Ok(c) = self._console.read_char() {
+                        if c.is_ascii() {
+                            self.data[*self.data_pointer] = c as u8;
+
+                            if self._stdout_echo && self.sink.is_none() {
+                                self._console.write_all(&[c as u8]).unwrap();
+                                self._console.flush().unwrap();
+                            }
+                            break;
+                        }
+                    }
+                }
             },
             '[' => {
                 if self.data[*self.data_pointer] == 0 {
@@ -171,6 +201,12 @@ impl<'a, 'b> Interpreter<'a, 'b> {
         R: io::Read,
     {
         self.source = Some(source)
+    }
+
+    // Whether to echo data written to stdin back to stdout IF AND ONLY IF sink isn't set
+    #[allow(dead_code)]
+    pub fn set_stdout_echo(&mut self, echo: bool) {
+        self._stdout_echo = echo
     }
 
     /// Remove all non-instruction characters
@@ -260,5 +296,46 @@ mod tests {
                     .collect::<String>()
             )
         }
+    }
+
+    #[test]
+    /// If the "Hello World!" program runs, the so does probably everything else
+    /// Apart from testing if the interpreter actually works, it also checks if the sink is working
+    fn hello_world() {
+        // https://esolangs.org/wiki/Brainfuck#Hello,_World!
+        const PROGRAM: &str = "++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++.";
+
+        let mut output: Vec<u8> = Vec::new();
+        let mut interpreter = Interpreter::new(PROGRAM, DEFAULT_CELL_SIZE);
+        interpreter.set_sink(&mut output);
+        interpreter.run_to_end();
+
+        assert_eq!(
+            // Brainf**k programs output ASCII characters, which are valid UTF-8
+            std::str::from_utf8(output.as_slice()).unwrap(),
+            "Hello World!\n"
+        )
+    }
+
+    #[test]
+    /// Test if the source and sink are functioning
+    fn echo() {
+        const INPUT: &str = "Hello, echo!";
+        // for those wonder why we put that many + before the loop, that's the loop counter
+        // it shows how many times the loop is gonna execute, or in our case, read from source
+        let program = format!("{}[>,.<-]", "+".repeat(INPUT.len()));
+
+        let mut output: Vec<u8> = Vec::new();
+        let mut input = io::Cursor::new(INPUT);
+        let mut interpreter = Interpreter::new(program, DEFAULT_CELL_SIZE);
+        interpreter.set_source(&mut input);
+        interpreter.set_sink(&mut output);
+        interpreter.run_to_end();
+
+        assert_eq!(
+            // Brainf**k programs output ASCII characters, which are valid UTF-8
+            std::str::from_utf8(output.as_slice()).unwrap(),
+            INPUT
+        )
     }
 }

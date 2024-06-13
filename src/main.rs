@@ -4,7 +4,6 @@ use simple_logger::SimpleLogger;
 
 use std::process::exit;
 
-mod input;
 mod interpreter;
 mod modular;
 use interpreter::*;
