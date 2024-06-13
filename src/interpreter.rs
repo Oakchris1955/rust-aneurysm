@@ -7,7 +7,8 @@ use std::{
 use bimap::BiMap;
 // I am trying to keep dependencies to a minimum, but as you can see, that's easier said than done
 use console;
-use log::{error, info};
+#[allow(unused_imports)]
+use log::{error, info, warn};
 // yep, we need an external crate to format numbers with separators
 use thousands::Separable;
 
@@ -56,6 +57,17 @@ impl<'a, 'b> Interpreter<'a, 'b> {
         info!("Allocating memory... ");
         // Creating a new data vector might not allocate any memory
         // For this reason, we iterate through the vector and set all its items to 0
+        #[cfg(debug_assertions)]
+        if num_of_cells >= 10_000_000 {
+            warn!(
+                "The program is allocating a significant amount of memory in debug mode ({} bytes). ",
+                num_of_cells.separate_with_spaces()
+            );
+            warn!("This allocation may take a long time, if it is well above 100 MBs, please run the program in release mode instead when performing such large allocations");
+            warn!("Apart from the memory allocation itself, if you are running an exhaustive program, it might take a long time to finish");
+            warn!("Generally, if your memory space is more than 10 MBs, please use release mode")
+        }
+
         let mut data: Vec<u8> = vec![0_u8; num_of_cells];
         data.iter_mut().for_each(|cell| *cell = 0);
         info!(
