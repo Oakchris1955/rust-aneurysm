@@ -331,9 +331,9 @@ mod tests {
     }
 
     #[test]
-    /// Test if the source and sink are functioning
-    fn echo() {
-        const INPUT: &str = "Hello, echo!";
+    /// Test if the source and sink are functioning, and that stdout_echo do indeed work ONLY for stdout
+    fn cat() {
+        const INPUT: &str = "Hello, cat!";
         // for those wonder why we put that many + before the loop, that's the loop counter
         // it shows how many times the loop is gonna execute, or in our case, read from source
         let program = format!("{}[>,.<-]", "+".repeat(INPUT.len()));
@@ -343,6 +343,7 @@ mod tests {
         let mut interpreter = Interpreter::new(program, DEFAULT_CELL_SIZE);
         interpreter.set_source(&mut input);
         interpreter.set_sink(&mut output);
+        interpreter.set_stdout_echo(true);
         interpreter.run_to_end();
 
         assert_eq!(
