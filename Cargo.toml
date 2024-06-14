@@ -1,6 +1,6 @@
 [package]
 name = "aneurysm"
-version = "0.1.0"
+version = "0.1.1"
 description = "Yet Another Brainf**k interpreter"
 license = "MIT"
 repository = "https://github.com/Oakchris1955/rust-aneurysm"

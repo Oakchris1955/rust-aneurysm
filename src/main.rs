@@ -25,6 +25,10 @@ struct Args {
     /// Enable verbose logging
     #[arg(short, long)]
     verbose: bool,
+
+    /// Whether or not to echo characters written to stdin
+    #[arg(short, long)]
+    echo: bool,
 }
 
 fn main() {
@@ -41,6 +45,7 @@ fn main() {
 
     let mut interpreter =
         Interpreter::new_from_path(&args.filename, args.cell_size).unwrap_or_else(|_| exit(1));
+    interpreter.set_stdout_echo(args.echo);
 
     info!("Start executing program...");
     interpreter.run_to_end();

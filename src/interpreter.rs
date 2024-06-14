@@ -216,7 +216,6 @@ impl<'a, 'b> Interpreter<'a, 'b> {
     }
 
     // Whether to echo data written to stdin back to stdout IF AND ONLY IF sink isn't set
-    #[allow(dead_code)]
     pub fn set_stdout_echo(&mut self, echo: bool) {
         self._stdout_echo = echo
     }

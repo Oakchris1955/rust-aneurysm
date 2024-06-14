@@ -11,14 +11,15 @@ If you have Cargo installed, simply run `cargo install aneurysm`. If you have al
 ```text
 A Brainf**k interpreter written in Rust with minimal dependencies
 
-Usage: aneurysm [OPTIONS] [filename]
+Usage: aneurysm [OPTIONS] [FILENAME]
 
 Arguments:
-  [filename]  Brainf**k file to execute [default: main.bf]
+  [FILENAME]  Brainf**k file to execute [default: main.bf]
 
 Options:
   -m, --mem <memory>  The memory size in bytes/cells to allocate for the program [default: 30000]
   -v, --verbose       Enable verbose logging
+  -e, --echo          Whether or not to echo characters written to stdin
   -h, --help          Print help
   -V, --version       Print version
 ```
