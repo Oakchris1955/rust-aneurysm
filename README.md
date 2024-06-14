@@ -24,6 +24,10 @@ Options:
   -V, --version       Print version
 ```
 
+### Logging
+
+Verbose logging will be printed to stderr when the `-v --verbose` flag is set. Anything with a level of `INFO` or above will be printed, or `DEBUG` is the program is run with debug assertations on. If the flag isn't set, the default level will be `WARN`. Please note that you can set the logging level at runtime using the `RUST_LOG` environment variable, which will take precedence over the above
+
 ## TODO
 
 - [x] Add generics for the `WrappingUInt` struct, rename it to `Modular` and move it to its own submodule

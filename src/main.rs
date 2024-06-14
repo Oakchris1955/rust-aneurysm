@@ -37,11 +37,22 @@ fn main() {
 
     // Initialize logger
     let log_level = if args.verbose {
-        LevelFilter::Info
+        #[cfg(debug_assertions)]
+        {
+            LevelFilter::Debug
+        }
+        #[cfg(not(debug_assertions))]
+        {
+            LevelFilter::Info
+        }
     } else {
         LevelFilter::Warn
     };
-    SimpleLogger::new().with_level(log_level).init().unwrap();
+    SimpleLogger::new()
+        .with_level(log_level)
+        .env()
+        .init()
+        .unwrap();
 
     let mut interpreter =
         Interpreter::new_from_path(&args.filename, args.cell_size).unwrap_or_else(|_| exit(1));

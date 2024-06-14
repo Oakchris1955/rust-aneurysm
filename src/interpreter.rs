@@ -167,6 +167,8 @@ impl<'a, 'b> Interpreter<'a, 'b> {
                                 self._console.flush().unwrap();
                             }
                             break;
+                        } else {
+                            warn!("Non-ASCII character {} read from console", c)
                         }
                     }
                 }
@@ -310,7 +312,7 @@ mod tests {
     }
 
     #[test]
-    /// If the "Hello World!" program runs, the so does probably everything else
+    /// If the "Hello World!" program runs, then so does probably everything else
     /// Apart from testing if the interpreter actually works, it also checks if the sink is working
     fn hello_world() {
         // https://esolangs.org/wiki/Brainfuck#Hello,_World!
