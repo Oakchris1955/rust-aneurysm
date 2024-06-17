@@ -1,6 +1,6 @@
 [package]
 name = "aneurysm"
-version = "0.1.1"
+version = "0.2.0"
 description = "Yet Another Brainf**k interpreter"
 license = "MIT"
 repository = "https://github.com/Oakchris1955/rust-aneurysm"
@@ -9,6 +9,15 @@ publish = true
 exclude = [".vscode", ".github"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "aneurysm_lib"
+path = "src/aneurysm-lib/lib.rs"
+
+[[bin]]
+name = "aneurysm"
+path = "src/aneurysm/main.rs"
+
 
 [profile.release]
 strip = true      # Automatically strip symbols from the binary.

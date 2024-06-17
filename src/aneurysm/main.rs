@@ -4,8 +4,7 @@ use simple_logger::SimpleLogger;
 
 use std::process::exit;
 
-mod interpreter;
-mod modular;
+use aneurysm_lib::*;
 use interpreter::*;
 
 #[derive(Parser)]

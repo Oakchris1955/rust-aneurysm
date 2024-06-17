@@ -18,3 +18,4 @@ target/
 
 # Compiled executables
 **/aneurysm*
+!src/aneurysm*
