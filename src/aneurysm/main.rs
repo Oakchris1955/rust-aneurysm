@@ -1,6 +1,6 @@
 use clap::{arg, command, Parser};
+use flexi_logger::Logger;
 use log::{info, LevelFilter};
-use simple_logger::SimpleLogger;
 
 use std::process::exit;
 
@@ -47,10 +47,11 @@ fn main() {
     } else {
         LevelFilter::Warn
     };
-    SimpleLogger::new()
-        .with_level(log_level)
-        .env()
-        .init()
+    Logger::try_with_env_or_str(log_level.to_string())
+        .unwrap()
+        .log_to_stderr()
+        .set_palette(String::from("196;226;44;91;-"))
+        .start()
         .unwrap();
 
     let mut interpreter =
