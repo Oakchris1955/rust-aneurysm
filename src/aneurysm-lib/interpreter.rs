@@ -108,7 +108,7 @@ impl<'a, 'b> Interpreter<'a, 'b> {
             }
             Err(error) => {
                 match error.kind() {
-                    io::ErrorKind::NotFound => error!("File {} not found", path.display()),
+                    io::ErrorKind::NotFound => error!("File \"{}\" not found", path.display()),
                     io::ErrorKind::PermissionDenied => {
                         error!("Couldn't open file due to a permission error")
                     }
