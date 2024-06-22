@@ -1,10 +1,10 @@
 use clap::{arg, command, Parser};
 use flexi_logger::Logger;
-use log::{info, LevelFilter};
+use log::LevelFilter;
 
 use std::process::exit;
 
-use aneurysm_lib::*;
+use aneurysm::*;
 use interpreter::*;
 
 #[derive(Parser)]
@@ -58,7 +58,7 @@ fn main() {
         Interpreter::new_from_path(&args.filename, args.cell_size).unwrap_or_else(|_| exit(1));
     interpreter.set_stdout_echo(args.echo);
 
-    info!("Start executing program...");
+    log::info!("Start executing program...");
     interpreter.run_to_end();
-    info!("Reached end of code data. Terminating...")
+    log::info!("Reached end of code data. Terminating...")
 }

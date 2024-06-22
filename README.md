@@ -1,8 +1,8 @@
-# Yet Another Brainf**k interpreter
+# Yet Another Brainf\*\*k interpreter
 
-An interpreter for `.bf` files (or any file that is written for the Brainf\*\*k *programming* language) that is written in the Rust programming language and is designed with efficiency in mind
+An interpreter for `.bf` files (or any file that is written for the Brainf\*\*k _programming_ language) that is written in the Rust programming language and is designed with efficiency in mind
 
-## What is Brainf**k anyways?
+## What is Brainf\*\*k anyways?
 
 According to [esolangs.org](https://esolangs.org/wiki/Main_Page):
 
@@ -48,7 +48,8 @@ This program basically adheres to the DOTADIW (Do One Thing and Do It Well) prin
 
 - [x] Add generics for the `WrappingUInt` struct, rename it to `Modular` and move it to its own submodule
 - [ ] Separate crate for `modular` submodule
-- [ ] Debugger (preferable some kind of remote server that can be used with existing debuggers)
+- [ ] (Work in progress) Debugger (~~preferable some kind of remote server that can be used with existing debuggers~~ not possible/realistic, designing own debugger from scratch)
+- [ ] Find a better prompt string for `lobotomy`
 - [ ] Docs for `aneurysm_lib`
 - [ ] Compiler?
 

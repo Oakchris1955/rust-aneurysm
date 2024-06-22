@@ -7,9 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+Debugger incoming
+
+### Added
+
+- Brainf\*\*k debugger (named `lobotomy`) to make it easier to write and debug Brainf\*\*k programs.
+  It functions as a shell (powered by [`shellfish`](https://crates.io/crates/shellfish)), with commands written for this very purpose (with more coming soon).
+  All the argument parsing is done using `clap`.
+  It also stores log files in a local directory [according to](https://crates.io/crates/directories):
+  - the XDG base directory and the XDG user directory specifications on Linux
+  - the Known Folder API on Windows
+  - the Standard Directories guidelines on macOS
+- A new `reset()` method for the `Interpreter` struct, which does exactly what you think
+- A new `reset()` method for the `Modular` struct, which, as above, does exactly what you think (only works if the inner type implements `Default`)
+
 ### Changed
 
 - Split project into different libraries and binaries
+- Log levels of some messages
 
 ## 0.1.1 - 2024-06-16
 
@@ -30,7 +45,7 @@ First release on [crates.io]
 
 ### Added
 
-- Brainf**k interpreter that has been thoroughly tested to make sure that bugs are non-existent
+- Brainf\*\*k interpreter that has been thoroughly tested to make sure that bugs are non-existent
 - Various logging levels, which can be changed by using the `-v --verbose` flag
 - Custom modular type to perform modular arithmetic on the data pointer. This essentialy makes the data pointer wraparound the cell memory when it goes out-of-bounds.
 - Barebones README

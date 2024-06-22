@@ -7,8 +7,7 @@ use std::{
 use bimap::BiMap;
 // I am trying to keep dependencies to a minimum, but as you can see, that's easier said than done
 use console;
-#[allow(unused_imports)]
-use log::{error, info, warn};
+use log;
 // yep, we need an external crate to format numbers with separators
 use thousands::Separable;
 
@@ -54,23 +53,25 @@ impl<'a, 'b> Interpreter<'a, 'b> {
         let mut loops = Loops::new();
         Self::get_loop(&code, 0, &mut loops);
 
-        info!("Allocating memory... ");
+        log::debug!("Allocating memory... ");
         // Creating a new data vector might not allocate any memory
         // For this reason, we iterate through the vector and set all its items to 0
         #[cfg(debug_assertions)]
         if num_of_cells >= 10_000_000 {
-            warn!(
+            log::warn!(
                 "The program is allocating a significant amount of memory in debug mode ({} bytes). ",
                 num_of_cells.separate_with_spaces()
             );
-            warn!("This allocation may take a long time, if it is well above 100 MBs, please run the program in release mode instead when performing such large allocations");
-            warn!("Apart from the memory allocation itself, if you are running an exhaustive program, it might take a long time to finish");
-            warn!("Generally, if your memory space is more than 10 MBs, please use release mode")
+            log::warn!("This allocation may take a long time, if it is well above 100 MBs, please run the program in release mode instead when performing such large allocations");
+            log::warn!("Apart from the memory allocation itself, if you are running an exhaustive program, it might take a long time to finish");
+            log::warn!(
+                "Generally, if your memory space is more than 10 MBs, please use release mode"
+            )
         }
 
         let mut data: Vec<u8> = vec![0_u8; num_of_cells];
         data.iter_mut().for_each(|cell| *cell = 0);
-        info!(
+        log::debug!(
             "Allocated {} bytes in total",
             // In the 22nd General Conference on Weights and Measures, it was declared that:
             // numbers may be divided in groups of three in order to facilitate reading;
@@ -103,16 +104,16 @@ impl<'a, 'b> Interpreter<'a, 'b> {
         // Read file contents (or return an error if one occurs while doing so)
         match fs::read_to_string(path) {
             Ok(code) => {
-                info!("Successfully opened file {}", path.display());
+                log::info!("Successfully opened file {}", path.display());
                 Ok(Self::new(code, num_of_cells))
             }
             Err(error) => {
                 match error.kind() {
-                    io::ErrorKind::NotFound => error!("File \"{}\" not found", path.display()),
+                    io::ErrorKind::NotFound => log::error!("File \"{}\" not found", path.display()),
                     io::ErrorKind::PermissionDenied => {
-                        error!("Couldn't open file due to a permission error")
+                        log::error!("Couldn't open file due to a permission error")
                     }
-                    _ => error!(
+                    _ => log::error!(
                         "An unknown error occured while opening file {}",
                         path.display()
                     ),
@@ -168,7 +169,7 @@ impl<'a, 'b> Interpreter<'a, 'b> {
                             }
                             break;
                         } else {
-                            warn!("Non-ASCII character {} read from console", c)
+                            log::warn!("Non-ASCII character {} read from console", c)
                         }
                     }
                 }
@@ -197,6 +198,18 @@ impl<'a, 'b> Interpreter<'a, 'b> {
     /// Runs `run_cycle` until it returns `None`
     pub fn run_to_end(&mut self) {
         while self.run_cycle().is_some() {}
+    }
+
+    /// Ready the interpreter for another program run
+    pub fn reset(&mut self) {
+        // Reset instruction and data pointer
+        self.instruction_pointer = 0;
+        self.data_pointer.reset();
+
+        // Reset data vector
+        self.data.iter_mut().for_each(|cell| *cell = 0);
+
+        log::debug!("Program state successfully reset");
     }
 
     /// An easy way to redirect the program's character output

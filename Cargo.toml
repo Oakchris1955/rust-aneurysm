@@ -11,12 +11,16 @@ exclude = [".vscode", ".github"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
-name = "aneurysm_lib"
+name = "aneurysm"
 path = "src/aneurysm-lib/lib.rs"
 
 [[bin]]
 name = "aneurysm"
 path = "src/aneurysm/main.rs"
+
+[[bin]]
+name = "lobotomy"
+path = "src/lobotomy/main.rs"
 
 
 [profile.release]
@@ -31,3 +35,7 @@ flexi_logger = "0.28.4"
 log = "0.4.21"
 thousands = "0.2.0"
 console = "0.15.8"
+shellfish = { version = "0.9.0" }
+directories = "5.0.1"
+displaydoc = "0.2.5"
+thiserror = "1.0.61"

@@ -61,6 +61,10 @@ where
             num: T::default(),
         }
     }
+
+    pub fn reset(&mut self) {
+        self.num = T::default()
+    }
 }
 
 impl<T> Deref for Modular<T>
