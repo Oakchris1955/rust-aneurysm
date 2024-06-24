@@ -49,6 +49,7 @@ This program basically adheres to the DOTADIW (Do One Thing and Do It Well) prin
 - [x] Add generics for the `WrappingUInt` struct, rename it to `Modular` and move it to its own submodule
 - [ ] Separate crate for `modular` submodule
 - [ ] (Work in progress) Debugger (~~preferable some kind of remote server that can be used with existing debuggers~~ not possible/realistic, designing own debugger from scratch)
+- [ ] create own shell (shellfish is good, but it doesn't exactly allows us to add aliases...)
 - [ ] Find a better prompt string for `lobotomy`
 - [ ] Docs for `aneurysm_lib`
 - [ ] Compiler?

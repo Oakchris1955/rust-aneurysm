@@ -20,7 +20,7 @@ pub enum BreakpointMode {
 }
 
 #[derive(Parser, Debug)]
-#[command(name = "breakpoint", about = "An easy way to tweak breakpoints")]
+#[command(bin_name = "breakpoint", about = "An easy way to tweak breakpoints")]
 pub struct BreakpointArgs {
     /// What to do at the provided index
     #[arg(value_enum, default_value_t = BreakpointMode::default())]

@@ -19,7 +19,7 @@ const LONG_ABOUT: &str = concat!(
 
 #[derive(Parser, Debug)]
 #[command(
-    name = "memdump",
+    bin_name = "memdump",
     about = ABOUT,
     long_about = format!("{}\n{}", ABOUT, LONG_ABOUT)
 )]

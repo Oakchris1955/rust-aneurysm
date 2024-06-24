@@ -7,7 +7,7 @@ use thiserror;
 use crate::StateType;
 
 #[derive(Parser, Debug)]
-#[command(name = "run", about = "Start executing the program")]
+#[command(bin_name = "run", about = "Start executing the program")]
 pub struct RunArgs {
     #[arg(short, long, exclusive(true))]
     /// Whether to ignore breakpoints (basically runs the program till EOF)
