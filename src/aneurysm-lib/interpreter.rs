@@ -7,6 +7,7 @@ use std::{
 use bimap::BiMap;
 // I am trying to keep dependencies to a minimum, but as you can see, that's easier said than done
 use console;
+use displaydoc::Display;
 use log;
 // yep, we need an external crate to format numbers with separators
 use thousands::Separable;
@@ -39,7 +40,7 @@ pub struct Interpreter<'a, 'b> {
 }
 
 impl<'a, 'b> Interpreter<'a, 'b> {
-    pub fn new<S>(code: S, num_of_cells: usize) -> Self
+    pub fn new<S>(code: S, num_of_cells: usize) -> InterpreterResult<Self>
     where
         S: ToString,
     {
@@ -48,10 +49,6 @@ impl<'a, 'b> Interpreter<'a, 'b> {
 
         // Remove all non-instruction characters
         Self::remove_comments(&mut code);
-
-        // create a loop bimap and populate it
-        let mut loops = Loops::new();
-        Self::get_loop(&code, 0, &mut loops);
 
         log::debug!("Allocating memory... ");
         // Creating a new data vector might not allocate any memory
@@ -79,12 +76,12 @@ impl<'a, 'b> Interpreter<'a, 'b> {
             num_of_cells.separate_with_spaces()
         );
 
-        Self {
+        Ok(Self {
             instruction_pointer: 0,
             data_pointer: Modular::with_limit(num_of_cells),
 
+            loops: Self::get_loop(&code)?,
             code,
-            loops,
             data,
 
             source: None,
@@ -92,10 +89,10 @@ impl<'a, 'b> Interpreter<'a, 'b> {
 
             _console: console::Term::stdout(),
             _stdout_echo: false,
-        }
+        })
     }
 
-    pub fn new_from_path<P>(path: P, num_of_cells: usize) -> io::Result<Self>
+    pub fn new_from_path<P>(path: P, num_of_cells: usize) -> InterpreterResult<Self>
     where
         P: AsRef<Path>,
     {
@@ -105,7 +102,7 @@ impl<'a, 'b> Interpreter<'a, 'b> {
         match fs::read_to_string(path) {
             Ok(code) => {
                 log::info!("Successfully opened file {}", path.display());
-                Ok(Self::new(code, num_of_cells))
+                Self::new(code, num_of_cells)
             }
             Err(error) => {
                 match error.kind() {
@@ -118,7 +115,7 @@ impl<'a, 'b> Interpreter<'a, 'b> {
                         path.display()
                     ),
                 };
-                Err(error)
+                Err(InterpreterError::IOError(error))
             }
         }
     }
@@ -243,35 +240,38 @@ impl<'a, 'b> Interpreter<'a, 'b> {
         })
     }
 
-    /// A recursive function that searches for loops within a BF file
-    fn get_loop(code: &Vec<char>, begin: usize, loops: &mut Loops) -> usize {
-        // Begin reading the code from a parameter index
-        let mut index = begin;
+    /// A looping function to get all matching loop brackets (returns [`InterpreterError::UnmatchedLoop`] if a bracket is unmatched)
+    fn get_loop(code: &Vec<char>) -> Result<Loops, InterpreterError> {
+        let mut loops = BiMap::new();
 
-        // Loop through each char in the Vec, beginning from the parameter index
-        while index < code.len() {
-            // Obtain the corresponding character
-            let character = code[index];
+        let mut stack: Vec<usize> = Vec::new();
 
-            match character {
-                // If it is the beginning of the loop, run the same function, BUT begin on a different index.
-                // Also, when the function is done executing, set the index to a later one to skip the already-processed loops
-                '[' => index = Self::get_loop(code, index + 1, loops),
-                // If it is the end of the loop, push a new loop tuple into the loops Vec and return with the current index
+        for (index, char) in code.iter().enumerate() {
+            match char {
+                '[' => stack.push(index),
                 ']' => {
-                    loops.insert(begin - 1, index);
-                    return index;
+                    loops.insert(stack.pop().ok_or(InterpreterError::UnmatchedLoop)?, index);
                 }
                 _ => (),
-            };
-
-            // Increment index by one
-            index += 1;
+            }
         }
 
-        // If no loop ending found, assume that the loop ending is at EOF
-        code.len()
+        if !stack.is_empty() {
+            return Err(InterpreterError::UnmatchedLoop);
+        }
+
+        Ok(loops)
     }
+}
+
+pub type InterpreterResult<T> = Result<T, InterpreterError>;
+
+#[derive(Display, Debug)]
+pub enum InterpreterError {
+    /// Found unmatched loop brackets
+    UnmatchedLoop,
+    /// {0}
+    IOError(io::Error),
 }
 
 #[cfg(test)]
@@ -289,14 +289,11 @@ mod tests {
         ];
 
         // Initialize some variables
-        let mut loops: Loops = BiMap::new();
         let mut failed_cases: Vec<&str> = Vec::new();
 
         // Run the tests. In case a test fails, DON'T PANIC, just push the failed case into the failed_cases Vec
         for (text, test_case) in TEST_CASES {
-            loops.clear();
-
-            Interpreter::get_loop(&text.chars().collect::<Vec<char>>(), 0, &mut loops);
+            let loops = Interpreter::get_loop(&text.chars().collect::<Vec<char>>()).unwrap();
 
             // Convert BiMap to a vector
             let mut loop_slice: Vec<(usize, usize)> =
@@ -332,7 +329,7 @@ mod tests {
         const PROGRAM: &str = "++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++.";
 
         let mut output: Vec<u8> = Vec::new();
-        let mut interpreter = Interpreter::new(PROGRAM, DEFAULT_CELL_SIZE);
+        let mut interpreter = Interpreter::new(PROGRAM, DEFAULT_CELL_SIZE).unwrap();
         interpreter.set_sink(&mut output);
         interpreter.run_to_end();
 
@@ -353,7 +350,7 @@ mod tests {
 
         let mut output: Vec<u8> = Vec::new();
         let mut input = io::Cursor::new(INPUT);
-        let mut interpreter = Interpreter::new(program, DEFAULT_CELL_SIZE);
+        let mut interpreter = Interpreter::new(program, DEFAULT_CELL_SIZE).unwrap();
         interpreter.set_source(&mut input);
         interpreter.set_sink(&mut output);
         interpreter.set_stdout_echo(true);

@@ -12,6 +12,8 @@ Brainfuck operates on an array of memory cells, each initially set to zero. In m
 
 There is a pointer, initially pointing to the first memory cell. There are 8 commands, `><+-.,[]` (all other characters are considered comments), which involve around moving the pointer, manipulating the memory cell at the pointer's location, reading and writing from/to a source/sink (stdin/stdout) and implementing a `jump`-like behaviour.
 
+**IMPORTANT:** unmatched loop brackets will be considered a syntax error (<https://brainfuck.org/brainfuck.html>)
+
 For more info, check <https://esolangs.org/wiki/Brainfuck>
 
 ## Installing / Compiling
@@ -50,6 +52,7 @@ This program basically adheres to the DOTADIW (Do One Thing and Do It Well) prin
 - [ ] Separate crate for `modular` submodule
 - [ ] (Work in progress) Debugger (~~preferable some kind of remote server that can be used with existing debuggers~~ not possible/realistic, designing own debugger from scratch)
 - [ ] create own shell (shellfish is good, but it doesn't exactly allows us to add aliases...)
+- [x] correctly handle loops in `aneurysm_lib`
 - [ ] Find a better prompt string for `lobotomy`
 - [ ] Docs for `aneurysm_lib`
 - [ ] Compiler?

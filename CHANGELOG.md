@@ -25,6 +25,8 @@ Debugger incoming
 
 - Split project into different libraries and binaries
 - Log levels of some messages
+- **IMPORTANT:** unmatched loop brackets will now be considered a syntax error (<https://brainfuck.org/brainfuck.html>)
+- Some functions of the `Interpreter` struct, namely `new` and `new_from_path` will now return a specialized `Result` type, `InterpreterResult`
 
 ## 0.1.1 - 2024-06-16
 

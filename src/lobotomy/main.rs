@@ -43,7 +43,7 @@ fn main() {
         Ok(interpreter) => interpreter,
         Err(err) => {
             log::error!(
-                "An IO error occured while opening file \"{}\":\n{}",
+                "An error occured while opening file \"{}\":\n{}",
                 args.filename.display(),
                 err
             );
