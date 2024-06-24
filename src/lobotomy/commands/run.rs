@@ -2,7 +2,6 @@ use std::error::Error;
 
 use clap::Parser;
 use displaydoc::Display;
-use log;
 use thiserror;
 
 use crate::StateType;
@@ -44,16 +43,13 @@ pub fn run(state: &mut StateType, args: RunArgs) -> Result<(), Box<dyn Error>> {
                 state
                     .breakpoints
                     .binary_search(&state.interpreter.instruction_pointer)
-                    .map(|ok_index| {
-                        log::debug!(
-                            "Found a breakpoint at the current instruction pointer index {}. This will be ignored and the next breakpoint (if any) will be expected",
-                            state.interpreter.instruction_pointer
-                        );
-                        ok_index + 1
-                    }) // get the next breakpoint, we already stopped here
+                    .map(|ok_index| ok_index + 1) // get the next breakpoint, we already stopped here
                     .unwrap_or_else(|err_index| err_index),
             )
-            .unwrap_or_else(|| {assert_ne!(state.interpreter.code.len(), usize::MAX, "Woah, just woah"); &usize::MAX}); // in this case, this is a "virtual" breakpoint that will never be reached, since it is past the program's EOF
+            .unwrap_or_else(|| {
+                assert_ne!(state.interpreter.code.len(), usize::MAX, "Woah, just woah");
+                &usize::MAX
+            }); // in this case, this is a "virtual" breakpoint that will never be reached, since it is past the program's EOF
 
         loop {
             if state.interpreter.run_cycle().is_none() {

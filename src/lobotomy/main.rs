@@ -13,6 +13,7 @@ mod clap_parser;
 mod commands;
 mod dirs;
 mod state;
+
 use commands::*;
 use dirs::*;
 pub use state::*;
@@ -30,9 +31,10 @@ fn main() {
     let args = Args::parse();
 
     // before doing ANYTHING, configure the logger
-    Logger::with(LogSpecification::info())
+    Logger::try_with_env_or_str(LogSpecification::info().to_string())
+        .unwrap()
         .log_to_file(log_filespec())
-        .duplicate_to_stderr(LevelFilter::Error.into())
+        .duplicate_to_stderr(LevelFilter::Warn.into())
         .set_palette(String::from("196;226;44;91;-"))
         .start()
         .unwrap();
