@@ -39,3 +39,4 @@ shellfish = { version = "0.9.0" }
 directories = "5.0.1"
 displaydoc = "0.2.5"
 thiserror = "1.0.61"
+term_size = "0.3.2"

@@ -75,6 +75,10 @@ fn main() {
         .commands
         .insert("run", clap_command!(StateType, RunArgs, run));
 
+    shell
+        .commands
+        .insert("memdump", clap_command!(StateType, MemdumpArgs, memdump));
+
     log::debug!("Commands injected, starting main loop...");
 
     shell.run().unwrap();
