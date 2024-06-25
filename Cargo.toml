@@ -12,7 +12,7 @@ exclude = [".vscode", ".github"]
 
 [lib]
 name = "aneurysm"
-path = "src/aneurysm-lib/lib.rs"
+path = "src/aneurysm_lib/lib.rs"
 
 [[bin]]
 name = "aneurysm"
