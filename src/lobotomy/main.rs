@@ -19,7 +19,12 @@ use dirs::*;
 pub use state::*;
 
 #[derive(Parser, Debug)]
-#[clap(author, version, about)]
+#[clap(
+    author,
+    version,
+    about = "A debugger for Brainf**k programs",
+    name = "lobotomy"
+)]
 struct Args {
     /// Path to the file to debug
     filename: std::path::PathBuf,
