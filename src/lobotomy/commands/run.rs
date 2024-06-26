@@ -12,18 +12,10 @@ pub struct RunArgs {
     #[arg(short, long, exclusive(true))]
     /// Whether to ignore breakpoints (basically runs the program till EOF)
     ignore_breakpoints: bool,
-
-    #[arg(short, long)]
-    /// Reset the interpreter to its original state (allows you to run the program again)
-    reset: bool,
 }
 
 pub fn run(state: &mut StateType, args: RunArgs) -> Result<(), Box<dyn Error>> {
     let mut state = state.borrow_mut();
-
-    if args.reset {
-        state.interpreter.reset()
-    }
 
     if state.interpreter.instruction_pointer >= state.interpreter.code.len() {
         eprintln!("{}", RunError::PastEOF);
