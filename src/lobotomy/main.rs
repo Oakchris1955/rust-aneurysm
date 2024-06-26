@@ -60,7 +60,10 @@ fn main() {
         args.filename.display()
     );
 
-    let state: StateType = Rc::new(RefCell::new(State::new(interpreter)));
+    let state: StateType = Rc::new(RefCell::new(State::new(
+        interpreter,
+        args.filename.canonicalize().unwrap(),
+    )));
     let prompt = Prompt::new(state.clone());
 
     let mut shell = Shell::new_with_handler(

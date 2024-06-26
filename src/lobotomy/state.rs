@@ -1,23 +1,30 @@
 use std::cell::RefCell;
+use std::path::PathBuf;
 use std::rc::Rc;
 
 use aneurysm::interpreter::*;
 
-const DEFAULT_PROMPT: &str = "&> ";
-
 pub struct State<'a, 'b> {
     pub interpreter: Interpreter<'a, 'b>,
     pub breakpoints: Vec<usize>,
-    pub prompt: String,
+    pub filepath: PathBuf,
 }
 
 impl<'a, 'b> State<'a, 'b> {
-    pub fn new(interpreter: Interpreter<'a, 'b>) -> Self {
+    pub fn new(interpreter: Interpreter<'a, 'b>, filepath: PathBuf) -> Self {
         State {
             interpreter,
             breakpoints: Vec::new(),
-            prompt: DEFAULT_PROMPT.to_string(),
+            filepath,
         }
+    }
+
+    pub fn filename(&self) -> String {
+        self.filepath
+            .file_name()
+            .unwrap()
+            .to_string_lossy()
+            .to_string()
     }
 }
 
@@ -33,6 +40,6 @@ impl<'a, 'b> Prompt<'a, 'b> {
 
 impl<'a, 'b> std::fmt::Display for Prompt<'a, 'b> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.state.borrow().prompt)
+        write!(f, "&\x1B[1m{}\x1B[0m> ", self.state.borrow().filename())
     }
 }
