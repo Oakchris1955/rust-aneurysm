@@ -123,7 +123,7 @@ impl<'a, 'b> Interpreter<'a, 'b> {
     }
 
     /// If this returns `None`, EOF was reached
-    pub fn run_cycle(&mut self) -> Option<()> {
+    pub fn run_step(&mut self) -> Option<()> {
         // Check if EOF was reached
         if self.instruction_pointer >= self.code.len() {
             return None;
@@ -188,9 +188,9 @@ impl<'a, 'b> Interpreter<'a, 'b> {
         Some(())
     }
 
-    /// Runs `run_cycle` until it returns `None`
+    /// Runs `run_step` until it returns `None`
     pub fn run_to_end(&mut self) {
-        while self.run_cycle().is_some() {}
+        while self.run_step().is_some() {}
     }
 
     /// Ready the interpreter for another program run

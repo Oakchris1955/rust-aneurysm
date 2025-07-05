@@ -44,7 +44,7 @@ pub fn run(state: &mut StateType, args: RunArgs) -> Result<(), Box<dyn Error>> {
             }); // in this case, this is a "virtual" breakpoint that will never be reached, since it is past the program's EOF
 
         loop {
-            if state.interpreter.run_cycle().is_none() {
+            if state.interpreter.run_step().is_none() {
                 eprintln!("\n{}", RunError::ReachedEOF);
 
                 return Ok(());
