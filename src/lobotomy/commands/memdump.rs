@@ -131,7 +131,7 @@ pub fn memdump(state: &mut StateType, args: MemdumpArgs) -> Result<(), Box<dyn E
     for i in start..=end {
         print_cell(
             CellType::Index(i),
-            i == *state.interpreter.data_pointer,
+            i == state.interpreter.data_pointer,
             i != end,
         )
     }
@@ -143,7 +143,7 @@ pub fn memdump(state: &mut StateType, args: MemdumpArgs) -> Result<(), Box<dyn E
                 byte: state.interpreter.data[i],
                 hex_uppercase: args.uppercase_hex,
             },
-            i == *state.interpreter.data_pointer,
+            i == state.interpreter.data_pointer,
             i != end,
         )
     }

@@ -12,7 +12,7 @@ use log;
 // yep, we need an external crate to format numbers with separators
 use thousands::Separable;
 
-use crate::modular::Modular;
+use num_modular::Reducer;
 
 /// The default filename to use in case one isn't specified by the user
 pub const DEFAULT_FILENAME: &str = "main.bf";
@@ -24,7 +24,8 @@ type Loops = BiMap<usize, usize>;
 
 pub struct Interpreter<'a, 'b> {
     pub instruction_pointer: usize,
-    pub data_pointer: Modular<usize>,
+    pub data_pointer: usize,
+    data_modulo: num_modular::Vanilla<usize>,
 
     pub code: Vec<char>,
     pub loops: Loops,
@@ -78,7 +79,8 @@ impl<'a, 'b> Interpreter<'a, 'b> {
 
         Ok(Self {
             instruction_pointer: 0,
-            data_pointer: Modular::with_limit(num_of_cells),
+            data_pointer: 0,
+            data_modulo: num_modular::Vanilla::new(&num_of_cells),
 
             loops: Self::get_loop(&code)?,
             code,
@@ -132,20 +134,14 @@ impl<'a, 'b> Interpreter<'a, 'b> {
 
         // Loop through each character and process it accordingly
         match character {
-            '>' => self.data_pointer += 1,
-            '<' => self.data_pointer -= 1,
-            '+' => {
-                self.data[*self.data_pointer] = self.data[*self.data_pointer].overflowing_add(1).0
-            }
-            '-' => {
-                self.data[*self.data_pointer] = self.data[*self.data_pointer].overflowing_sub(1).0
-            }
+            '>' => self.data_modulo.add_in_place(&mut self.data_pointer, &1),
+            '<' => self.data_modulo.sub_in_place(&mut self.data_pointer, &1),
+            '+' => self.data[self.data_pointer] = self.data[self.data_pointer].overflowing_add(1).0,
+            '-' => self.data[self.data_pointer] = self.data[self.data_pointer].overflowing_sub(1).0,
             '.' => match &mut self.sink {
-                Some(writable) => writable
-                    .write_all(&[self.data[*self.data_pointer]])
-                    .unwrap(),
+                Some(writable) => writable.write_all(&[self.data[self.data_pointer]]).unwrap(),
                 None => {
-                    print!("{}", self.data[*self.data_pointer] as char);
+                    print!("{}", self.data[self.data_pointer] as char);
                     io::stdout().flush().unwrap()
                 }
             },
@@ -153,12 +149,12 @@ impl<'a, 'b> Interpreter<'a, 'b> {
                 Some(readable) => {
                     let mut buf = [0u8];
                     readable.read_exact(&mut buf).unwrap();
-                    self.data[*self.data_pointer] = buf[0];
+                    self.data[self.data_pointer] = buf[0];
                 }
                 None => {
                     while let Ok(c) = self._console.read_char() {
                         if c.is_ascii() {
-                            self.data[*self.data_pointer] = c as u8;
+                            self.data[self.data_pointer] = c as u8;
 
                             if self._stdout_echo && self.sink.is_none() {
                                 self._console.write_all(&[c as u8]).unwrap();
@@ -172,13 +168,13 @@ impl<'a, 'b> Interpreter<'a, 'b> {
                 }
             },
             '[' => {
-                if self.data[*self.data_pointer] == 0 {
+                if self.data[self.data_pointer] == 0 {
                     self.instruction_pointer =
                         *self.loops.get_by_left(&self.instruction_pointer).unwrap()
                 }
             }
             ']' => {
-                if self.data[*self.data_pointer] != 0 {
+                if self.data[self.data_pointer] != 0 {
                     self.instruction_pointer =
                         *self.loops.get_by_right(&self.instruction_pointer).unwrap()
                 }
@@ -201,7 +197,7 @@ impl<'a, 'b> Interpreter<'a, 'b> {
     pub fn reset(&mut self) {
         // Reset instruction and data pointer
         self.instruction_pointer = 0;
-        self.data_pointer.reset();
+        self.data_pointer = 0;
 
         // Reset data vector
         self.data.iter_mut().for_each(|cell| *cell = 0);

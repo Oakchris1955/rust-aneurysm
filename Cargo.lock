@@ -37,6 +37,7 @@ dependencies = [
  "displaydoc",
  "flexi_logger",
  "log",
+ "num-modular",
  "shellfish",
  "term_size",
  "thiserror",
@@ -455,6 +456,12 @@ checksum = "dd2800e1520bdc966782168a627aa5d1ad92e33b984bf7c7615d31280c83ff14"
 dependencies = [
  "windows-sys 0.48.0",
 ]
+
+[[package]]
+name = "num-modular"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "17bb261bf36fa7d83f4c294f834e91256769097b3cb505d44831e0a179ac647f"
 
 [[package]]
 name = "num-traits"
