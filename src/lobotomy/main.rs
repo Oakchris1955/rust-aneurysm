@@ -44,7 +44,10 @@ fn main() {
         .start()
         .unwrap();
 
-    let interpreter = match Interpreter::new_from_path(&args.filename, DEFAULT_CELL_SIZE) {
+    let interpreter = match Interpreter::new_from_path(
+        &args.filename,
+        InterpreterOptions::debug().with_cell_size(DEFAULT_CELL_SIZE),
+    ) {
         Ok(interpreter) => interpreter,
         Err(err) => {
             log::error!(

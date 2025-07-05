@@ -54,8 +54,11 @@ fn main() {
         .start()
         .unwrap();
 
-    let mut interpreter =
-        Interpreter::new_from_path(&args.filename, args.cell_size).unwrap_or_else(|_| exit(1));
+    let mut interpreter = Interpreter::new_from_path(
+        &args.filename,
+        InterpreterOptions::release().with_cell_size(args.cell_size),
+    )
+    .unwrap_or_else(|_| exit(1));
     interpreter.set_stdout_echo(args.echo);
 
     log::info!("Start executing program...");

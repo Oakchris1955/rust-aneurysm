@@ -31,6 +31,8 @@ pub struct Interpreter<'a, 'b> {
     pub loops: Loops,
     pub data: Vec<u8>,
 
+    profile: InterpreterProfile,
+
     /// If this is unset, will write to stdout
     pub sink: Option<&'a mut dyn io::Write>,
     /// If this is unset, will read from stdin
@@ -40,8 +42,49 @@ pub struct Interpreter<'a, 'b> {
     _stdout_echo: bool,
 }
 
+#[derive(Clone, PartialEq, Eq)]
+pub enum InterpreterProfile {
+    Debug,
+    Release,
+}
+
+pub struct InterpreterOptions {
+    num_of_cells: usize,
+    profile: InterpreterProfile,
+}
+
+impl InterpreterOptions {
+    pub fn debug() -> Self {
+        Self {
+            profile: InterpreterProfile::Debug,
+            ..Self::default()
+        }
+    }
+
+    pub fn release() -> Self {
+        Self {
+            profile: InterpreterProfile::Release,
+            ..Self::default()
+        }
+    }
+
+    pub fn with_cell_size(mut self, cell_size: usize) -> Self {
+        self.num_of_cells = cell_size;
+        self
+    }
+}
+
+impl Default for InterpreterOptions {
+    fn default() -> Self {
+        Self {
+            num_of_cells: DEFAULT_CELL_SIZE,
+            profile: InterpreterProfile::Debug,
+        }
+    }
+}
+
 impl<'a, 'b> Interpreter<'a, 'b> {
-    pub fn new<S>(code: S, num_of_cells: usize) -> InterpreterResult<Self>
+    pub fn new<S>(code: S, options: InterpreterOptions) -> InterpreterResult<Self>
     where
         S: ToString,
     {
@@ -49,16 +92,18 @@ impl<'a, 'b> Interpreter<'a, 'b> {
         let mut code = code.to_string().chars().collect::<Vec<char>>();
 
         // Remove all non-instruction characters
-        Self::remove_comments(&mut code);
+        if options.profile == InterpreterProfile::Release {
+            Self::remove_comments(&mut code);
+        }
 
         log::debug!("Allocating memory... ");
         // Creating a new data vector might not allocate any memory
         // For this reason, we iterate through the vector and set all its items to 0
         #[cfg(debug_assertions)]
-        if num_of_cells >= 10_000_000 {
+        if options.num_of_cells >= 10_000_000 {
             log::warn!(
                 "The program is allocating a significant amount of memory in debug mode ({} bytes). ",
-                num_of_cells.separate_with_spaces()
+                options.num_of_cells.separate_with_spaces()
             );
             log::warn!("This allocation may take a long time, if it is well above 100 MBs, please run the program in release mode instead when performing such large allocations");
             log::warn!("Apart from the memory allocation itself, if you are running an exhaustive program, it might take a long time to finish");
@@ -67,24 +112,26 @@ impl<'a, 'b> Interpreter<'a, 'b> {
             )
         }
 
-        let mut data: Vec<u8> = vec![0_u8; num_of_cells];
+        let mut data: Vec<u8> = vec![0_u8; options.num_of_cells];
         data.iter_mut().for_each(|cell| *cell = 0);
         log::debug!(
             "Allocated {} bytes in total",
             // In the 22nd General Conference on Weights and Measures, it was declared that:
             // numbers may be divided in groups of three in order to facilitate reading;
             // neither dots nor commas are ever inserted in the spaces between groups
-            num_of_cells.separate_with_spaces()
+            options.num_of_cells.separate_with_spaces()
         );
 
         Ok(Self {
             instruction_pointer: 0,
             data_pointer: 0,
-            data_modulo: num_modular::Vanilla::new(&num_of_cells),
+            data_modulo: num_modular::Vanilla::new(&options.num_of_cells),
 
             loops: Self::get_loop(&code)?,
             code,
             data,
+
+            profile: options.profile,
 
             source: None,
             sink: None,
@@ -94,7 +141,7 @@ impl<'a, 'b> Interpreter<'a, 'b> {
         })
     }
 
-    pub fn new_from_path<P>(path: P, num_of_cells: usize) -> InterpreterResult<Self>
+    pub fn new_from_path<P>(path: P, options: InterpreterOptions) -> InterpreterResult<Self>
     where
         P: AsRef<Path>,
     {
@@ -104,7 +151,7 @@ impl<'a, 'b> Interpreter<'a, 'b> {
         match fs::read_to_string(path) {
             Ok(code) => {
                 log::info!("Successfully opened file {}", path.display());
-                Self::new(code, num_of_cells)
+                Self::new(code, options)
             }
             Err(error) => {
                 match error.kind() {
@@ -228,6 +275,13 @@ impl<'a, 'b> Interpreter<'a, 'b> {
         self._stdout_echo = echo
     }
 
+    pub fn get_options(&self) -> InterpreterOptions {
+        InterpreterOptions {
+            num_of_cells: self.data_modulo.modulus(),
+            profile: self.profile.clone(),
+        }
+    }
+
     /// Remove all non-instruction characters
     fn remove_comments(code: &mut Vec<char>) {
         code.retain(|c| match c {
@@ -325,7 +379,7 @@ mod tests {
         const PROGRAM: &str = "++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++.";
 
         let mut output: Vec<u8> = Vec::new();
-        let mut interpreter = Interpreter::new(PROGRAM, DEFAULT_CELL_SIZE).unwrap();
+        let mut interpreter = Interpreter::new(PROGRAM, InterpreterOptions::release()).unwrap();
         interpreter.set_sink(&mut output);
         interpreter.run_to_end();
 
@@ -346,7 +400,7 @@ mod tests {
 
         let mut output: Vec<u8> = Vec::new();
         let mut input = io::Cursor::new(INPUT);
-        let mut interpreter = Interpreter::new(program, DEFAULT_CELL_SIZE).unwrap();
+        let mut interpreter = Interpreter::new(program, InterpreterOptions::release()).unwrap();
         interpreter.set_source(&mut input);
         interpreter.set_sink(&mut output);
         interpreter.set_stdout_echo(true);

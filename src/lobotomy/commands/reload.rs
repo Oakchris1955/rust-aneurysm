@@ -39,7 +39,7 @@ pub fn reload(state: &mut StateType, args: ReloadArgs) -> Result<(), Box<dyn Err
         ReloadMode::File => {
             state.interpreter = match Interpreter::new_from_path(
                 state.filepath.clone(),
-                state.interpreter.data.len(),
+                state.interpreter.get_options(),
             ) {
                 Ok(new_interpreter) => {
                     println!("File \"{}\" reloaded", state.filename());
