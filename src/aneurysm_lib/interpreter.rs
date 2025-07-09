@@ -48,6 +48,19 @@ pub enum InterpreterProfile {
     Release,
 }
 
+impl Default for InterpreterProfile {
+    fn default() -> Self {
+        #[cfg(not(debug_assertions))]
+        {
+            InterpreterProfile::Release
+        }
+        #[cfg(debug_assertions)]
+        {
+            InterpreterProfile::Debug
+        }
+    }
+}
+
 pub struct InterpreterOptions {
     num_of_cells: usize,
     profile: InterpreterProfile,
@@ -78,7 +91,7 @@ impl Default for InterpreterOptions {
     fn default() -> Self {
         Self {
             num_of_cells: DEFAULT_CELL_SIZE,
-            profile: InterpreterProfile::Debug,
+            profile: InterpreterProfile::default(),
         }
     }
 }
