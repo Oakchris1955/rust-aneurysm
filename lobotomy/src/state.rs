@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use aneurysm::interpreter::*;
+use aneurysm_lib::interpreter::*;
 
 pub struct State<'a, 'b> {
     pub interpreter: Interpreter<'a, 'b>,

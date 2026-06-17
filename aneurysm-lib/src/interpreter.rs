@@ -1,24 +1,16 @@
+use super::*;
+
 use std::{
     fs,
-    io::{self, Write},
+    io::{self, prelude::*},
     path::Path,
 };
 
 use bimap::BiMap;
-// I am trying to keep dependencies to a minimum, but as you can see, that's easier said than done
-use console;
 use displaydoc::Display;
 use log;
-// yep, we need an external crate to format numbers with separators
-use thousands::Separable;
 
 use num_modular::Reducer;
-
-/// The default filename to use in case one isn't specified by the user
-pub const DEFAULT_FILENAME: &str = "main.bf";
-
-/// The default cell size to use in case one isn't specified by the user
-pub const DEFAULT_CELL_SIZE: usize = 30000;
 
 type Loops = BiMap<usize, usize>;
 
@@ -33,13 +25,57 @@ pub struct Interpreter<'a, 'b> {
 
     profile: InterpreterProfile,
 
-    /// If this is unset, will write to stdout
-    pub sink: Option<&'a mut dyn io::Write>,
-    /// If this is unset, will read from stdin
-    pub source: Option<&'b mut dyn io::Read>,
+    sink: Sink<'a>,
+    source: Source<'b>,
 
-    _console: console::Term,
     _stdout_echo: bool,
+}
+
+enum Sink<'a> {
+    Stdout(io::Stdout),
+    Other(&'a mut dyn io::Write),
+}
+
+impl<'a> Default for Sink<'a> {
+    fn default() -> Self {
+        Self::Stdout(io::stdout())
+    }
+}
+
+impl<'a> io::Write for Sink<'a> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        match self {
+            Sink::Stdout(stdout) => return stdout.write(buf),
+            Sink::Other(other) => return other.write(buf),
+        }
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        match self {
+            Sink::Stdout(stdout) => return stdout.flush(),
+            Sink::Other(other) => return other.flush(),
+        }
+    }
+}
+
+enum Source<'b> {
+    Stdin(io::Stdin),
+    Other(&'b mut dyn io::Read),
+}
+
+impl<'a> Default for Source<'a> {
+    fn default() -> Self {
+        Self::Stdin(io::stdin())
+    }
+}
+
+impl<'b> io::Read for Source<'b> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        match self {
+            Source::Stdin(stdin) => return stdin.read(buf),
+            Source::Other(other) => return other.read(buf),
+        }
+    }
 }
 
 #[derive(Clone, PartialEq, Eq)]
@@ -116,10 +152,14 @@ impl<'a, 'b> Interpreter<'a, 'b> {
         if options.num_of_cells >= 10_000_000 {
             log::warn!(
                 "The program is allocating a significant amount of memory in debug mode ({} bytes). ",
-                options.num_of_cells.separate_with_spaces()
+                options.num_of_cells
             );
-            log::warn!("This allocation may take a long time, if it is well above 100 MBs, please run the program in release mode instead when performing such large allocations");
-            log::warn!("Apart from the memory allocation itself, if you are running an exhaustive program, it might take a long time to finish");
+            log::warn!(
+                "This allocation may take a long time, if it is well above 100 MBs, please run the program in release mode instead when performing such large allocations"
+            );
+            log::warn!(
+                "Apart from the memory allocation itself, if you are running an exhaustive program, it might take a long time to finish"
+            );
             log::warn!(
                 "Generally, if your memory space is more than 10 MBs, please use release mode"
             )
@@ -132,7 +172,7 @@ impl<'a, 'b> Interpreter<'a, 'b> {
             // In the 22nd General Conference on Weights and Measures, it was declared that:
             // numbers may be divided in groups of three in order to facilitate reading;
             // neither dots nor commas are ever inserted in the spaces between groups
-            options.num_of_cells.separate_with_spaces()
+            options.num_of_cells
         );
 
         Ok(Self {
@@ -146,10 +186,9 @@ impl<'a, 'b> Interpreter<'a, 'b> {
 
             profile: options.profile,
 
-            source: None,
-            sink: None,
+            source: Source::default(),
+            sink: Sink::default(),
 
-            _console: console::Term::stdout(),
             _stdout_echo: false,
         })
     }
@@ -198,35 +237,21 @@ impl<'a, 'b> Interpreter<'a, 'b> {
             '<' => self.data_modulo.sub_in_place(&mut self.data_pointer, &1),
             '+' => self.data[self.data_pointer] = self.data[self.data_pointer].overflowing_add(1).0,
             '-' => self.data[self.data_pointer] = self.data[self.data_pointer].overflowing_sub(1).0,
-            '.' => match &mut self.sink {
-                Some(writable) => writable.write_all(&[self.data[self.data_pointer]]).unwrap(),
-                None => {
-                    print!("{}", self.data[self.data_pointer] as char);
-                    io::stdout().flush().unwrap()
-                }
-            },
-            ',' => match &mut self.source {
-                Some(readable) => {
-                    let mut buf = [0u8];
-                    readable.read_exact(&mut buf).unwrap();
-                    self.data[self.data_pointer] = buf[0];
-                }
-                None => {
-                    while let Ok(c) = self._console.read_char() {
-                        if c.is_ascii() {
-                            self.data[self.data_pointer] = c as u8;
+            '.' => self
+                .sink
+                .write_all(&[self.data[self.data_pointer]])
+                .unwrap(),
+            ',' => {
+                let mut buf = [0u8];
+                self.source.read_exact(&mut buf).unwrap();
+                self.data[self.data_pointer] = buf[0];
 
-                            if self._stdout_echo && self.sink.is_none() {
-                                self._console.write_all(&[c as u8]).unwrap();
-                                self._console.flush().unwrap();
-                            }
-                            break;
-                        } else {
-                            log::warn!("Non-ASCII character {} read from console", c)
-                        }
-                    }
+                if self._stdout_echo {
+                    let mut stdout = io::stdout();
+                    stdout.write_all(&buf).unwrap();
+                    stdout.flush().unwrap();
                 }
-            },
+            }
             '[' => {
                 if self.data[self.data_pointer] == 0 {
                     self.instruction_pointer =
@@ -271,7 +296,7 @@ impl<'a, 'b> Interpreter<'a, 'b> {
     where
         W: io::Write,
     {
-        self.sink = Some(sink)
+        self.sink = Sink::Other(sink)
     }
 
     /// An easy way to set an alternative program character input
@@ -280,7 +305,7 @@ impl<'a, 'b> Interpreter<'a, 'b> {
     where
         R: io::Read,
     {
-        self.source = Some(source)
+        self.source = Source::Other(source)
     }
 
     // Whether to echo data written to stdin back to stdout IF AND ONLY IF sink isn't set

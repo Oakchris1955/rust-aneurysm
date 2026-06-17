@@ -1,43 +1,8 @@
-[package]
-name = "aneurysm"
-version = "0.2.0"
-description = "Yet Another Brainf**k interpreter"
-license = "MIT"
-repository = "https://github.com/Oakchris1955/rust-aneurysm"
-edition = "2021"
-publish = true
-exclude = [".vscode", ".github"]
+[workspace]
+resolver = "3"
+members = ["aneurysm", "aneurysm-lib", "lobotomy"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[lib]
-name = "aneurysm"
-path = "src/aneurysm_lib/lib.rs"
-
-[[bin]]
-name = "aneurysm"
-path = "src/aneurysm/main.rs"
-
-[[bin]]
-name = "lobotomy"
-path = "src/lobotomy/main.rs"
-
-
-[profile.release]
-strip = true      # Automatically strip symbols from the binary.
-lto = true        # Optimize code as much as possible
-codegen-units = 1 # Use a single codegen unit for compilation, which also makes the code faster
-
-[dependencies]
-clap = { version = "4.3.3", features = ["cargo", "derive"] }
-bimap = "0.6.3"
-flexi_logger = "0.28.4"
-log = "0.4.21"
-thousands = "0.2.0"
-console = "0.15.8"
-shellfish = { version = "0.9.0" }
-directories = "5.0.1"
-displaydoc = "0.2.5"
-thiserror = "1.0.61"
-term_size = "0.3.2"
-num-modular = "0.6.1"
+[workspace.dependencies]
+clap = { version = "4.6.1", features = ["derive"] }
+flexi_logger = { version = "0.31.9" }
+log = { version = "0.4.32" }

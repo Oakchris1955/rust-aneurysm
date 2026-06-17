@@ -7,7 +7,8 @@ use log::LevelFilter;
 use rustyline::DefaultEditor;
 use shellfish::{handler::DefaultHandler, *};
 
-use aneurysm::interpreter::*;
+use aneurysm_lib::interpreter::*;
+use aneurysm_lib::DEFAULT_CELL_SIZE;
 
 mod clap_parser;
 mod commands;

@@ -7,7 +7,7 @@ use displaydoc::Display;
 use thiserror;
 
 use crate::StateType;
-use aneurysm::interpreter::*;
+use aneurysm_lib::interpreter::*;
 
 #[derive(ValueEnum, Debug, Clone)]
 pub enum ReloadMode {

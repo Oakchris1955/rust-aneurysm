@@ -1,11 +1,11 @@
-use clap::{arg, command, Parser};
+use clap::Parser;
 use flexi_logger::Logger;
 use log::LevelFilter;
 
 use std::process::exit;
 
-use aneurysm::*;
-use interpreter::*;
+use aneurysm_lib::interpreter::{Interpreter, InterpreterOptions};
+use aneurysm_lib::{DEFAULT_CELL_SIZE, DEFAULT_FILENAME};
 
 #[derive(Parser)]
 #[command(
