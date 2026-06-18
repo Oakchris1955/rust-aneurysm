@@ -11,5 +11,8 @@ publish = true
 bimap = "0.6.3"
 displaydoc = "0.2.6"
 thiserror = "2.0.18"
-num-modular = "0.6.4"
 log = { workspace = true }
+
+[dev-dependencies]
+duplicate = "2.0.1"
+rand = { version = "0.10.1", features = ["thread_rng"] }

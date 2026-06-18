@@ -10,14 +10,12 @@ use bimap::BiMap;
 use displaydoc::Display;
 use log;
 
-use num_modular::Reducer;
-
 type Loops = BiMap<usize, usize>;
 
 pub struct Interpreter<'a, 'b> {
     pub instruction_pointer: usize,
     pub data_pointer: usize,
-    data_modulo: num_modular::Vanilla<usize>,
+    num_of_cells: usize,
 
     pub code: Vec<char>,
     pub loops: Loops,
@@ -178,7 +176,7 @@ impl<'a, 'b> Interpreter<'a, 'b> {
         Ok(Self {
             instruction_pointer: 0,
             data_pointer: 0,
-            data_modulo: num_modular::Vanilla::new(&options.num_of_cells),
+            num_of_cells: options.num_of_cells,
 
             loops: Self::get_loop(&code)?,
             code,
@@ -223,6 +221,8 @@ impl<'a, 'b> Interpreter<'a, 'b> {
 
     /// If this returns `None`, EOF was reached
     pub fn run_step(&mut self) -> Result<Option<()>, InterpreterError> {
+        use modular::Modular;
+
         // Check if EOF was reached
         if self.instruction_pointer >= self.code.len() {
             return Ok(None);
@@ -233,8 +233,8 @@ impl<'a, 'b> Interpreter<'a, 'b> {
 
         // Loop through each character and process it accordingly
         match character {
-            '>' => self.data_modulo.add_in_place(&mut self.data_pointer, &1),
-            '<' => self.data_modulo.sub_in_place(&mut self.data_pointer, &1),
+            '>' => self.increment_in_place(),
+            '<' => self.decrement_in_place(),
             '+' => self.data[self.data_pointer] = self.data[self.data_pointer].overflowing_add(1).0,
             '-' => self.data[self.data_pointer] = self.data[self.data_pointer].overflowing_sub(1).0,
             '.' => self.sink.write_all(&[self.data[self.data_pointer]])?,
@@ -324,7 +324,7 @@ impl<'a, 'b> Interpreter<'a, 'b> {
 
     pub fn get_options(&self) -> InterpreterOptions {
         InterpreterOptions {
-            num_of_cells: self.data_modulo.modulus(),
+            num_of_cells: self.num_of_cells,
             profile: self.profile.clone(),
         }
     }
@@ -361,6 +361,24 @@ impl<'a, 'b> Interpreter<'a, 'b> {
     }
 }
 
+impl modular::Modular for Interpreter<'_, '_> {
+    fn increment_in_place(&mut self) {
+        if self.data_pointer >= self.num_of_cells - 1 {
+            self.data_pointer = 0
+        } else {
+            self.data_pointer += 1;
+        }
+    }
+
+    fn decrement_in_place(&mut self) {
+        if self.data_pointer == 0 {
+            self.data_pointer = self.num_of_cells - 1;
+        } else {
+            self.data_pointer -= 1;
+        }
+    }
+}
+
 pub type InterpreterResult<T> = Result<T, InterpreterError>;
 
 #[derive(Display, Debug)]
@@ -380,6 +398,8 @@ impl From<io::Error> for InterpreterError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use duplicate::duplicate_item;
 
     #[test]
     /// A test function that ensures that the [`get_loop`] function works correctly
@@ -456,5 +476,58 @@ mod tests {
         interpreter.run_to_end().unwrap();
 
         assert_eq!(output.as_slice(), INPUT.as_bytes())
+    }
+
+    // Test whether our wrapping algorithm works correctly
+    #[duplicate_item(
+        method program;
+        /*
+         * We set the first cell to 255, go one cell to the right and infinitely
+         * move to the right until we wrap around the cell area and end up to the
+         * first cell, ending the loop and the program.
+         *
+         * Each time we go to a new cell (other than the first one), we print a
+         * character to track how many times the loop has been run
+         */
+        [wrapping_right] ["->+[-{}.->+]"];
+        /*
+         * Same as above, but we move to the left and also start a bit to the right
+         * to not immediately wrap around
+         */
+
+        [wrapping_left] [">>>-<+[-{}.-<+]"];
+    )]
+    #[test]
+    fn method() {
+        use rand::distr::Alphanumeric;
+        use rand::{RngExt, rng};
+
+        let random_alphanum = rng().sample_iter(&Alphanumeric).next().unwrap();
+        let num_of_cells = rng().random_range(DEFAULT_CELL_SIZE..(DEFAULT_CELL_SIZE * 10));
+
+        log::info!(
+            concat!(
+                "Running `wrapping_right` test with random alphanumeric `{}` ",
+                "and with a total number of cells `{}`"
+            ),
+            random_alphanum as char,
+            num_of_cells
+        );
+        let mut output: Vec<u8> = Vec::with_capacity(num_of_cells - 1);
+        let mut interpreter = Interpreter::new(
+            format!(program, "+".repeat(random_alphanum.into())),
+            InterpreterOptions::release().with_cell_size(num_of_cells),
+        )
+        .unwrap();
+        interpreter.set_sink(&mut output);
+        interpreter.run_to_end().unwrap();
+
+        assert_eq!(
+            output.as_slice(),
+            vec![random_alphanum; num_of_cells - 1].as_slice(),
+            "output slice isn't the same as expected. parameters: alphanum {}, cell count {}",
+            random_alphanum as char,
+            num_of_cells
+        )
     }
 }
