@@ -62,6 +62,6 @@ fn main() {
     interpreter.set_stdout_echo(args.echo);
 
     log::info!("Start executing program...");
-    interpreter.run_to_end();
+    interpreter.run_to_end().unwrap();
     log::info!("Reached end of code data. Terminating...")
 }

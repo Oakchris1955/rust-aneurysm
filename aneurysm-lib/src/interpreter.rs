@@ -222,10 +222,10 @@ impl<'a, 'b> Interpreter<'a, 'b> {
     }
 
     /// If this returns `None`, EOF was reached
-    pub fn run_step(&mut self) -> Option<()> {
+    pub fn run_step(&mut self) -> Result<Option<()>, InterpreterError> {
         // Check if EOF was reached
         if self.instruction_pointer >= self.code.len() {
-            return None;
+            return Ok(None);
         }
 
         // Get the next character to process
@@ -237,19 +237,26 @@ impl<'a, 'b> Interpreter<'a, 'b> {
             '<' => self.data_modulo.sub_in_place(&mut self.data_pointer, &1),
             '+' => self.data[self.data_pointer] = self.data[self.data_pointer].overflowing_add(1).0,
             '-' => self.data[self.data_pointer] = self.data[self.data_pointer].overflowing_sub(1).0,
-            '.' => self
-                .sink
-                .write_all(&[self.data[self.data_pointer]])
-                .unwrap(),
+            '.' => self.sink.write_all(&[self.data[self.data_pointer]])?,
             ',' => {
                 let mut buf = [0u8];
-                self.source.read_exact(&mut buf).unwrap();
+                let bytes_read = self.source.read(&mut buf)?;
+                if bytes_read == 0 {
+                    /*
+                     * we have reached EOF on the source
+                     * per the esolang wiki, we can either leave the current
+                     * cell unchanged or return with a status code of zero, if
+                     * we were a program. Since we are in a library, we just exit
+                     * as if we reached the instructions' EOF
+                     */
+                    return Ok(None);
+                }
                 self.data[self.data_pointer] = buf[0];
 
                 if self._stdout_echo {
                     let mut stdout = io::stdout();
-                    stdout.write_all(&buf).unwrap();
-                    stdout.flush().unwrap();
+                    stdout.write_all(&buf)?;
+                    stdout.flush()?;
                 }
             }
             '[' => {
@@ -270,12 +277,14 @@ impl<'a, 'b> Interpreter<'a, 'b> {
         // Increment the instruction pointer for the next cycle
         self.instruction_pointer += 1;
 
-        Some(())
+        Ok(Some(()))
     }
 
     /// Runs `run_step` until it returns `None`
-    pub fn run_to_end(&mut self) {
-        while self.run_step().is_some() {}
+    pub fn run_to_end(&mut self) -> Result<(), InterpreterError> {
+        while self.run_step()?.is_some() {}
+
+        Ok(())
     }
 
     /// Ready the interpreter for another program run
@@ -362,6 +371,12 @@ pub enum InterpreterError {
     IOError(io::Error),
 }
 
+impl From<io::Error> for InterpreterError {
+    fn from(value: io::Error) -> Self {
+        InterpreterError::IOError(value)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -419,7 +434,7 @@ mod tests {
         let mut output: Vec<u8> = Vec::new();
         let mut interpreter = Interpreter::new(PROGRAM, InterpreterOptions::release()).unwrap();
         interpreter.set_sink(&mut output);
-        interpreter.run_to_end();
+        interpreter.run_to_end().unwrap();
 
         assert_eq!(output.as_slice(), b"Hello World!\n")
     }
@@ -438,7 +453,7 @@ mod tests {
         interpreter.set_source(&mut input);
         interpreter.set_sink(&mut output);
         interpreter.set_stdout_echo(true);
-        interpreter.run_to_end();
+        interpreter.run_to_end().unwrap();
 
         assert_eq!(output.as_slice(), INPUT.as_bytes())
     }
