@@ -421,11 +421,7 @@ mod tests {
         interpreter.set_sink(&mut output);
         interpreter.run_to_end();
 
-        assert_eq!(
-            // Brainf**k programs output ASCII characters, which are valid UTF-8
-            std::str::from_utf8(output.as_slice()).unwrap(),
-            "Hello World!\n"
-        )
+        assert_eq!(output.as_slice(), b"Hello World!\n")
     }
 
     #[test]
@@ -444,10 +440,6 @@ mod tests {
         interpreter.set_stdout_echo(true);
         interpreter.run_to_end();
 
-        assert_eq!(
-            // Brainf**k programs output ASCII characters, which are valid UTF-8
-            std::str::from_utf8(output.as_slice()).unwrap(),
-            INPUT
-        )
+        assert_eq!(output.as_slice(), INPUT.as_bytes())
     }
 }
