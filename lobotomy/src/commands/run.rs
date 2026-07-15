@@ -2,7 +2,6 @@ use std::error::Error;
 
 use clap::Parser;
 use displaydoc::Display;
-use thiserror;
 
 use crate::{StateType, err::map_interpreter_err};
 
@@ -28,7 +27,7 @@ pub fn run(state: &mut StateType, args: RunArgs) -> Result<(), Box<dyn Error>> {
             .run_to_end()
             .map_err(map_interpreter_err)?;
         eprintln!("\n{}", RunError::ReachedEOF);
-        return Ok(());
+        Ok(())
     } else {
         // Check where the next breakpoint would be
         let next_breakpoint_index = *state

@@ -3,7 +3,6 @@ use std::error::Error;
 use clap::CommandFactory;
 use clap::Parser;
 use displaydoc::Display;
-use thiserror;
 
 use term_size::dimensions as term_dimensions;
 
@@ -83,7 +82,7 @@ fn print_cell(cell: CellType, inverse: bool, sep: bool) {
 }
 
 pub fn memdump(state: &mut StateType, args: MemdumpArgs) -> Result<(), Box<dyn Error>> {
-    if args.width % 2 == 0 {
+    if args.width.is_multiple_of(2) {
         let mut cmd = MemdumpArgs::command();
         cmd.error(
             clap::error::ErrorKind::ValueValidation,

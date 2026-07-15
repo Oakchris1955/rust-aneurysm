@@ -3,8 +3,6 @@ use std::error::Error;
 use clap::CommandFactory;
 use clap::{Parser, ValueEnum};
 use displaydoc::Display;
-use log;
-use thiserror;
 
 use crate::StateType;
 

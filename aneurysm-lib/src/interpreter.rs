@@ -26,7 +26,7 @@ pub struct Interpreter<'a, 'b> {
     sink: Sink<'a>,
     source: Source<'b>,
 
-    _stdout_echo: bool,
+    stdout_echo: bool,
 }
 
 enum Sink<'a> {
@@ -43,15 +43,15 @@ impl<'a> Default for Sink<'a> {
 impl<'a> io::Write for Sink<'a> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         match self {
-            Sink::Stdout(stdout) => return stdout.write(buf),
-            Sink::Other(other) => return other.write(buf),
+            Sink::Stdout(stdout) => stdout.write(buf),
+            Sink::Other(other) => other.write(buf),
         }
     }
 
     fn flush(&mut self) -> io::Result<()> {
         match self {
-            Sink::Stdout(stdout) => return stdout.flush(),
-            Sink::Other(other) => return other.flush(),
+            Sink::Stdout(stdout) => stdout.flush(),
+            Sink::Other(other) => other.flush(),
         }
     }
 }
@@ -70,29 +70,18 @@ impl<'a> Default for Source<'a> {
 impl<'b> io::Read for Source<'b> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         match self {
-            Source::Stdin(stdin) => return stdin.read(buf),
-            Source::Other(other) => return other.read(buf),
+            Source::Stdin(stdin) => stdin.read(buf),
+            Source::Other(other) => other.read(buf),
         }
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Default)]
 pub enum InterpreterProfile {
+    #[cfg_attr(debug_assertions, default)]
     Debug,
+    #[cfg_attr(not(debug_assertions), default)]
     Release,
-}
-
-impl Default for InterpreterProfile {
-    fn default() -> Self {
-        #[cfg(not(debug_assertions))]
-        {
-            InterpreterProfile::Release
-        }
-        #[cfg(debug_assertions)]
-        {
-            InterpreterProfile::Debug
-        }
-    }
 }
 
 pub struct InterpreterOptions {
@@ -187,7 +176,7 @@ impl<'a, 'b> Interpreter<'a, 'b> {
             source: Source::default(),
             sink: Sink::default(),
 
-            _stdout_echo: false,
+            stdout_echo: false,
         })
     }
 
@@ -253,23 +242,19 @@ impl<'a, 'b> Interpreter<'a, 'b> {
                 }
                 self.data[self.data_pointer] = buf[0];
 
-                if self._stdout_echo {
+                if self.stdout_echo {
                     let mut stdout = io::stdout();
                     stdout.write_all(&buf)?;
                     stdout.flush()?;
                 }
             }
-            '[' => {
-                if self.data[self.data_pointer] == 0 {
-                    self.instruction_pointer =
-                        *self.loops.get_by_left(&self.instruction_pointer).unwrap()
-                }
+            '[' if self.data[self.data_pointer] == 0 => {
+                self.instruction_pointer =
+                    *self.loops.get_by_left(&self.instruction_pointer).unwrap()
             }
-            ']' => {
-                if self.data[self.data_pointer] != 0 {
-                    self.instruction_pointer =
-                        *self.loops.get_by_right(&self.instruction_pointer).unwrap()
-                }
+            ']' if self.data[self.data_pointer] != 0 => {
+                self.instruction_pointer =
+                    *self.loops.get_by_right(&self.instruction_pointer).unwrap()
             }
             _ => (),
         };
@@ -319,7 +304,7 @@ impl<'a, 'b> Interpreter<'a, 'b> {
 
     // Whether to echo data written to stdin back to stdout IF AND ONLY IF sink isn't set
     pub fn set_stdout_echo(&mut self, echo: bool) {
-        self._stdout_echo = echo
+        self.stdout_echo = echo
     }
 
     pub fn get_options(&self) -> InterpreterOptions {
@@ -331,14 +316,11 @@ impl<'a, 'b> Interpreter<'a, 'b> {
 
     /// Remove all non-instruction characters
     fn remove_comments(code: &mut Vec<char>) {
-        code.retain(|c| match c {
-            '>' | '<' | '+' | '-' | '.' | ',' | '[' | ']' => true,
-            _ => false,
-        })
+        code.retain(|c| matches!(c, '>' | '<' | '+' | '-' | '.' | ',' | '[' | ']'))
     }
 
     /// A looping function to get all matching loop brackets (returns [`InterpreterError::UnmatchedLoop`] if a bracket is unmatched)
-    fn get_loop(code: &Vec<char>) -> Result<Loops, InterpreterError> {
+    fn get_loop(code: &[char]) -> Result<Loops, InterpreterError> {
         let mut loops = BiMap::new();
 
         let mut stack: Vec<usize> = Vec::new();
@@ -426,7 +408,7 @@ mod tests {
             loop_slice.sort();
 
             if test_case != &loop_slice {
-                failed_cases.push(&text)
+                failed_cases.push(text)
             }
         }
 

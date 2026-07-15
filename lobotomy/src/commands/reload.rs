@@ -4,7 +4,6 @@ use std::error::Error;
 
 use clap::{Parser, ValueEnum};
 use displaydoc::Display;
-use thiserror;
 
 use crate::StateType;
 use aneurysm_lib::interpreter::*;
