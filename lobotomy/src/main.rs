@@ -7,11 +7,13 @@ use log::LevelFilter;
 use rustyline::DefaultEditor;
 use shellfish::{handler::DefaultHandler, *};
 
-use aneurysm::interpreter::*;
+use aneurysm_lib::DEFAULT_CELL_SIZE;
+use aneurysm_lib::interpreter::*;
 
 mod clap_parser;
 mod commands;
 mod dirs;
+pub(crate) mod err;
 mod state;
 
 use commands::*;

@@ -2,9 +2,8 @@ use std::error::Error;
 
 use clap::Parser;
 use displaydoc::Display;
-use thiserror;
 
-use crate::StateType;
+use crate::{StateType, err::map_interpreter_err};
 
 #[derive(Parser, Debug)]
 #[command(bin_name = "run", about = "Start executing the program")]
@@ -23,9 +22,12 @@ pub fn run(state: &mut StateType, args: RunArgs) -> Result<(), Box<dyn Error>> {
     }
 
     if args.ignore_breakpoints || state.breakpoints.is_empty() {
-        state.interpreter.run_to_end();
+        state
+            .interpreter
+            .run_to_end()
+            .map_err(map_interpreter_err)?;
         eprintln!("\n{}", RunError::ReachedEOF);
-        return Ok(());
+        Ok(())
     } else {
         // Check where the next breakpoint would be
         let next_breakpoint_index = *state
@@ -44,7 +46,12 @@ pub fn run(state: &mut StateType, args: RunArgs) -> Result<(), Box<dyn Error>> {
             }); // in this case, this is a "virtual" breakpoint that will never be reached, since it is past the program's EOF
 
         loop {
-            if state.interpreter.run_step().is_none() {
+            if state
+                .interpreter
+                .run_step()
+                .map_err(map_interpreter_err)?
+                .is_none()
+            {
                 eprintln!("\n{}", RunError::ReachedEOF);
 
                 return Ok(());

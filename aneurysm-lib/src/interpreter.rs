@@ -1,31 +1,21 @@
+use super::*;
+
 use std::{
     fs,
-    io::{self, Write},
+    io::{self, prelude::*},
     path::Path,
 };
 
 use bimap::BiMap;
-// I am trying to keep dependencies to a minimum, but as you can see, that's easier said than done
-use console;
 use displaydoc::Display;
 use log;
-// yep, we need an external crate to format numbers with separators
-use thousands::Separable;
-
-use num_modular::Reducer;
-
-/// The default filename to use in case one isn't specified by the user
-pub const DEFAULT_FILENAME: &str = "main.bf";
-
-/// The default cell size to use in case one isn't specified by the user
-pub const DEFAULT_CELL_SIZE: usize = 30000;
 
 type Loops = BiMap<usize, usize>;
 
 pub struct Interpreter<'a, 'b> {
     pub instruction_pointer: usize,
     pub data_pointer: usize,
-    data_modulo: num_modular::Vanilla<usize>,
+    num_of_cells: usize,
 
     pub code: Vec<char>,
     pub loops: Loops,
@@ -33,32 +23,65 @@ pub struct Interpreter<'a, 'b> {
 
     profile: InterpreterProfile,
 
-    /// If this is unset, will write to stdout
-    pub sink: Option<&'a mut dyn io::Write>,
-    /// If this is unset, will read from stdin
-    pub source: Option<&'b mut dyn io::Read>,
+    sink: Sink<'a>,
+    source: Source<'b>,
 
-    _console: console::Term,
-    _stdout_echo: bool,
+    stdout_echo: bool,
 }
 
-#[derive(Clone, PartialEq, Eq)]
-pub enum InterpreterProfile {
-    Debug,
-    Release,
+enum Sink<'a> {
+    Stdout(io::Stdout),
+    Other(&'a mut dyn io::Write),
 }
 
-impl Default for InterpreterProfile {
+impl<'a> Default for Sink<'a> {
     fn default() -> Self {
-        #[cfg(not(debug_assertions))]
-        {
-            InterpreterProfile::Release
-        }
-        #[cfg(debug_assertions)]
-        {
-            InterpreterProfile::Debug
+        Self::Stdout(io::stdout())
+    }
+}
+
+impl<'a> io::Write for Sink<'a> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        match self {
+            Sink::Stdout(stdout) => stdout.write(buf),
+            Sink::Other(other) => other.write(buf),
         }
     }
+
+    fn flush(&mut self) -> io::Result<()> {
+        match self {
+            Sink::Stdout(stdout) => stdout.flush(),
+            Sink::Other(other) => other.flush(),
+        }
+    }
+}
+
+enum Source<'b> {
+    Stdin(io::Stdin),
+    Other(&'b mut dyn io::Read),
+}
+
+impl<'a> Default for Source<'a> {
+    fn default() -> Self {
+        Self::Stdin(io::stdin())
+    }
+}
+
+impl<'b> io::Read for Source<'b> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        match self {
+            Source::Stdin(stdin) => stdin.read(buf),
+            Source::Other(other) => other.read(buf),
+        }
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Default)]
+pub enum InterpreterProfile {
+    #[cfg_attr(debug_assertions, default)]
+    Debug,
+    #[cfg_attr(not(debug_assertions), default)]
+    Release,
 }
 
 pub struct InterpreterOptions {
@@ -116,10 +139,14 @@ impl<'a, 'b> Interpreter<'a, 'b> {
         if options.num_of_cells >= 10_000_000 {
             log::warn!(
                 "The program is allocating a significant amount of memory in debug mode ({} bytes). ",
-                options.num_of_cells.separate_with_spaces()
+                options.num_of_cells
             );
-            log::warn!("This allocation may take a long time, if it is well above 100 MBs, please run the program in release mode instead when performing such large allocations");
-            log::warn!("Apart from the memory allocation itself, if you are running an exhaustive program, it might take a long time to finish");
+            log::warn!(
+                "This allocation may take a long time, if it is well above 100 MBs, please run the program in release mode instead when performing such large allocations"
+            );
+            log::warn!(
+                "Apart from the memory allocation itself, if you are running an exhaustive program, it might take a long time to finish"
+            );
             log::warn!(
                 "Generally, if your memory space is more than 10 MBs, please use release mode"
             )
@@ -132,13 +159,13 @@ impl<'a, 'b> Interpreter<'a, 'b> {
             // In the 22nd General Conference on Weights and Measures, it was declared that:
             // numbers may be divided in groups of three in order to facilitate reading;
             // neither dots nor commas are ever inserted in the spaces between groups
-            options.num_of_cells.separate_with_spaces()
+            options.num_of_cells
         );
 
         Ok(Self {
             instruction_pointer: 0,
             data_pointer: 0,
-            data_modulo: num_modular::Vanilla::new(&options.num_of_cells),
+            num_of_cells: options.num_of_cells,
 
             loops: Self::get_loop(&code)?,
             code,
@@ -146,11 +173,10 @@ impl<'a, 'b> Interpreter<'a, 'b> {
 
             profile: options.profile,
 
-            source: None,
-            sink: None,
+            source: Source::default(),
+            sink: Sink::default(),
 
-            _console: console::Term::stdout(),
-            _stdout_echo: false,
+            stdout_echo: false,
         })
     }
 
@@ -183,10 +209,12 @@ impl<'a, 'b> Interpreter<'a, 'b> {
     }
 
     /// If this returns `None`, EOF was reached
-    pub fn run_step(&mut self) -> Option<()> {
+    pub fn run_step(&mut self) -> Result<Option<()>, InterpreterError> {
+        use modular::Modular;
+
         // Check if EOF was reached
         if self.instruction_pointer >= self.code.len() {
-            return None;
+            return Ok(None);
         }
 
         // Get the next character to process
@@ -194,50 +222,39 @@ impl<'a, 'b> Interpreter<'a, 'b> {
 
         // Loop through each character and process it accordingly
         match character {
-            '>' => self.data_modulo.add_in_place(&mut self.data_pointer, &1),
-            '<' => self.data_modulo.sub_in_place(&mut self.data_pointer, &1),
+            '>' => self.increment_in_place(),
+            '<' => self.decrement_in_place(),
             '+' => self.data[self.data_pointer] = self.data[self.data_pointer].overflowing_add(1).0,
             '-' => self.data[self.data_pointer] = self.data[self.data_pointer].overflowing_sub(1).0,
-            '.' => match &mut self.sink {
-                Some(writable) => writable.write_all(&[self.data[self.data_pointer]]).unwrap(),
-                None => {
-                    print!("{}", self.data[self.data_pointer] as char);
-                    io::stdout().flush().unwrap()
+            '.' => self.sink.write_all(&[self.data[self.data_pointer]])?,
+            ',' => {
+                let mut buf = [0u8];
+                let bytes_read = self.source.read(&mut buf)?;
+                if bytes_read == 0 {
+                    /*
+                     * we have reached EOF on the source
+                     * per the esolang wiki, we can either leave the current
+                     * cell unchanged or return with a status code of zero, if
+                     * we were a program. Since we are in a library, we just exit
+                     * as if we reached the instructions' EOF
+                     */
+                    return Ok(None);
                 }
-            },
-            ',' => match &mut self.source {
-                Some(readable) => {
-                    let mut buf = [0u8];
-                    readable.read_exact(&mut buf).unwrap();
-                    self.data[self.data_pointer] = buf[0];
-                }
-                None => {
-                    while let Ok(c) = self._console.read_char() {
-                        if c.is_ascii() {
-                            self.data[self.data_pointer] = c as u8;
+                self.data[self.data_pointer] = buf[0];
 
-                            if self._stdout_echo && self.sink.is_none() {
-                                self._console.write_all(&[c as u8]).unwrap();
-                                self._console.flush().unwrap();
-                            }
-                            break;
-                        } else {
-                            log::warn!("Non-ASCII character {} read from console", c)
-                        }
-                    }
-                }
-            },
-            '[' => {
-                if self.data[self.data_pointer] == 0 {
-                    self.instruction_pointer =
-                        *self.loops.get_by_left(&self.instruction_pointer).unwrap()
+                if self.stdout_echo {
+                    let mut stdout = io::stdout();
+                    stdout.write_all(&buf)?;
+                    stdout.flush()?;
                 }
             }
-            ']' => {
-                if self.data[self.data_pointer] != 0 {
-                    self.instruction_pointer =
-                        *self.loops.get_by_right(&self.instruction_pointer).unwrap()
-                }
+            '[' if self.data[self.data_pointer] == 0 => {
+                self.instruction_pointer =
+                    *self.loops.get_by_left(&self.instruction_pointer).unwrap()
+            }
+            ']' if self.data[self.data_pointer] != 0 => {
+                self.instruction_pointer =
+                    *self.loops.get_by_right(&self.instruction_pointer).unwrap()
             }
             _ => (),
         };
@@ -245,12 +262,14 @@ impl<'a, 'b> Interpreter<'a, 'b> {
         // Increment the instruction pointer for the next cycle
         self.instruction_pointer += 1;
 
-        Some(())
+        Ok(Some(()))
     }
 
     /// Runs `run_step` until it returns `None`
-    pub fn run_to_end(&mut self) {
-        while self.run_step().is_some() {}
+    pub fn run_to_end(&mut self) -> Result<(), InterpreterError> {
+        while self.run_step()?.is_some() {}
+
+        Ok(())
     }
 
     /// Ready the interpreter for another program run
@@ -271,7 +290,7 @@ impl<'a, 'b> Interpreter<'a, 'b> {
     where
         W: io::Write,
     {
-        self.sink = Some(sink)
+        self.sink = Sink::Other(sink)
     }
 
     /// An easy way to set an alternative program character input
@@ -280,31 +299,28 @@ impl<'a, 'b> Interpreter<'a, 'b> {
     where
         R: io::Read,
     {
-        self.source = Some(source)
+        self.source = Source::Other(source)
     }
 
     // Whether to echo data written to stdin back to stdout IF AND ONLY IF sink isn't set
     pub fn set_stdout_echo(&mut self, echo: bool) {
-        self._stdout_echo = echo
+        self.stdout_echo = echo
     }
 
     pub fn get_options(&self) -> InterpreterOptions {
         InterpreterOptions {
-            num_of_cells: self.data_modulo.modulus(),
+            num_of_cells: self.num_of_cells,
             profile: self.profile.clone(),
         }
     }
 
     /// Remove all non-instruction characters
     fn remove_comments(code: &mut Vec<char>) {
-        code.retain(|c| match c {
-            '>' | '<' | '+' | '-' | '.' | ',' | '[' | ']' => true,
-            _ => false,
-        })
+        code.retain(|c| matches!(c, '>' | '<' | '+' | '-' | '.' | ',' | '[' | ']'))
     }
 
     /// A looping function to get all matching loop brackets (returns [`InterpreterError::UnmatchedLoop`] if a bracket is unmatched)
-    fn get_loop(code: &Vec<char>) -> Result<Loops, InterpreterError> {
+    fn get_loop(code: &[char]) -> Result<Loops, InterpreterError> {
         let mut loops = BiMap::new();
 
         let mut stack: Vec<usize> = Vec::new();
@@ -327,6 +343,24 @@ impl<'a, 'b> Interpreter<'a, 'b> {
     }
 }
 
+impl modular::Modular for Interpreter<'_, '_> {
+    fn increment_in_place(&mut self) {
+        if self.data_pointer >= self.num_of_cells - 1 {
+            self.data_pointer = 0
+        } else {
+            self.data_pointer += 1;
+        }
+    }
+
+    fn decrement_in_place(&mut self) {
+        if self.data_pointer == 0 {
+            self.data_pointer = self.num_of_cells - 1;
+        } else {
+            self.data_pointer -= 1;
+        }
+    }
+}
+
 pub type InterpreterResult<T> = Result<T, InterpreterError>;
 
 #[derive(Display, Debug)]
@@ -337,9 +371,17 @@ pub enum InterpreterError {
     IOError(io::Error),
 }
 
+impl From<io::Error> for InterpreterError {
+    fn from(value: io::Error) -> Self {
+        InterpreterError::IOError(value)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use duplicate::duplicate_item;
 
     #[test]
     /// A test function that ensures that the [`get_loop`] function works correctly
@@ -366,7 +408,7 @@ mod tests {
             loop_slice.sort();
 
             if test_case != &loop_slice {
-                failed_cases.push(&text)
+                failed_cases.push(text)
             }
         }
 
@@ -394,13 +436,9 @@ mod tests {
         let mut output: Vec<u8> = Vec::new();
         let mut interpreter = Interpreter::new(PROGRAM, InterpreterOptions::release()).unwrap();
         interpreter.set_sink(&mut output);
-        interpreter.run_to_end();
+        interpreter.run_to_end().unwrap();
 
-        assert_eq!(
-            // Brainf**k programs output ASCII characters, which are valid UTF-8
-            std::str::from_utf8(output.as_slice()).unwrap(),
-            "Hello World!\n"
-        )
+        assert_eq!(output.as_slice(), b"Hello World!\n")
     }
 
     #[test]
@@ -417,12 +455,61 @@ mod tests {
         interpreter.set_source(&mut input);
         interpreter.set_sink(&mut output);
         interpreter.set_stdout_echo(true);
-        interpreter.run_to_end();
+        interpreter.run_to_end().unwrap();
+
+        assert_eq!(output.as_slice(), INPUT.as_bytes())
+    }
+
+    // Test whether our wrapping algorithm works correctly
+    #[duplicate_item(
+        method program;
+        /*
+         * We set the first cell to 255, go one cell to the right and infinitely
+         * move to the right until we wrap around the cell area and end up to the
+         * first cell, ending the loop and the program.
+         *
+         * Each time we go to a new cell (other than the first one), we print a
+         * character to track how many times the loop has been run
+         */
+        [wrapping_right] ["->+[-{}.->+]"];
+        /*
+         * Same as above, but we move to the left and also start a bit to the right
+         * to not immediately wrap around
+         */
+
+        [wrapping_left] [">>>-<+[-{}.-<+]"];
+    )]
+    #[test]
+    fn method() {
+        use rand::distr::Alphanumeric;
+        use rand::{RngExt, rng};
+
+        let random_alphanum = rng().sample_iter(&Alphanumeric).next().unwrap();
+        let num_of_cells = rng().random_range(DEFAULT_CELL_SIZE..(DEFAULT_CELL_SIZE * 10));
+
+        log::info!(
+            concat!(
+                "Running `wrapping_right` test with random alphanumeric `{}` ",
+                "and with a total number of cells `{}`"
+            ),
+            random_alphanum as char,
+            num_of_cells
+        );
+        let mut output: Vec<u8> = Vec::with_capacity(num_of_cells - 1);
+        let mut interpreter = Interpreter::new(
+            format!(program, "+".repeat(random_alphanum.into())),
+            InterpreterOptions::release().with_cell_size(num_of_cells),
+        )
+        .unwrap();
+        interpreter.set_sink(&mut output);
+        interpreter.run_to_end().unwrap();
 
         assert_eq!(
-            // Brainf**k programs output ASCII characters, which are valid UTF-8
-            std::str::from_utf8(output.as_slice()).unwrap(),
-            INPUT
+            output.as_slice(),
+            vec![random_alphanum; num_of_cells - 1].as_slice(),
+            "output slice isn't the same as expected. parameters: alphanum {}, cell count {}",
+            random_alphanum as char,
+            num_of_cells
         )
     }
 }

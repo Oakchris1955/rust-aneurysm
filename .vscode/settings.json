@@ -2,5 +2,6 @@
     "editor.formatOnSave": true,
     "markdownlint.config": {
         "MD024": false
-    }
+    },
+    "rust-analyzer.check.command": "clippy"
 }
